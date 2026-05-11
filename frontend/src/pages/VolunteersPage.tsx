@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import api from '../api/client'
 import toast from 'react-hot-toast'
-import { Users, MapPin, Star, CheckCircle, XCircle } from 'lucide-react'
+import { Users, MapPin, Star, CheckCircle, XCircle, Search } from 'lucide-react'
 
 interface Volunteer {
   id: string; email: string; full_name: string; location?: string; phone?: string
   profile?: {
-    skills?: string; availability?: string; preferred_areas?: string
-    experience_years: number; bio?: string; is_available: boolean
-    total_tasks_completed: number; rating: number
+    skills?: string; experience_years: number; bio?: string
+    is_available: boolean; total_tasks_completed: number; rating: number
   }
 }
+
+const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } }
+const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } }
 
 export default function VolunteersPage() {
   const [volunteers, setVolunteers] = useState<Volunteer[]>([])
@@ -18,19 +21,13 @@ export default function VolunteersPage() {
   const [availableOnly, setAvailableOnly] = useState(false)
   const [search, setSearch] = useState('')
 
-  const fetchVolunteers = async () => {
+  useEffect(() => {
     setLoading(true)
-    try {
-      const { data } = await api.get('/volunteers/', { params: { available_only: availableOnly } })
-      setVolunteers(data)
-    } catch {
-      toast.error('Failed to load volunteers')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => { fetchVolunteers() }, [availableOnly])
+    api.get('/volunteers/', { params: { available_only: availableOnly } })
+      .then(r => setVolunteers(r.data))
+      .catch(() => toast.error('Failed to load volunteers'))
+      .finally(() => setLoading(false))
+  }, [availableOnly])
 
   const filtered = volunteers.filter(v =>
     v.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -39,79 +36,99 @@ export default function VolunteersPage() {
   )
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Volunteers</h1>
-        <p className="text-gray-500 text-sm mt-1">Manage and view all registered volunteers</p>
-      </div>
+    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+      <motion.div variants={item}>
+        <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'Plus Jakarta Sans' }}>Volunteers</h1>
+        <p className="text-slate-400 text-sm mt-1">All registered volunteers and their profiles</p>
+      </motion.div>
 
-      <div className="flex gap-3 flex-wrap items-center">
-        <input
-          className="input flex-1 min-w-48"
-          placeholder="Search by name, city, or skill..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-          <input type="checkbox" checked={availableOnly} onChange={e => setAvailableOnly(e.target.checked)} className="rounded" />
+      <motion.div variants={item} className="flex gap-3 flex-wrap items-center">
+        <div className="relative flex-1 min-w-48">
+          <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+          <input className="input pl-11" placeholder="Search by name, city, or skill..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer hover:text-white transition-colors">
+          <div
+            onClick={() => setAvailableOnly(!availableOnly)}
+            className={`w-10 h-5 rounded-full transition-all duration-300 relative cursor-pointer ${availableOnly ? 'bg-blue-600' : 'bg-slate-700'}`}
+          >
+            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all duration-300 ${availableOnly ? 'left-5' : 'left-0.5'}`} />
+          </div>
           Available only
         </label>
-      </div>
+      </motion.div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" /></div>
+        <div className="flex justify-center py-16">
+          <div className="w-10 h-10 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin" />
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <motion.div variants={container} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(vol => (
-            <VolunteerCard key={vol.id} volunteer={vol} />
+            <motion.div
+              key={vol.id}
+              variants={item}
+              whileHover={{ y: -4, scale: 1.01 }}
+              className="card hover:border-white/20 transition-all duration-300"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                    {vol.full_name.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-sm">{vol.full_name}</h3>
+                    <p className="text-xs text-slate-500">{vol.email}</p>
+                  </div>
+                </div>
+                {vol.profile && (
+                  vol.profile.is_available
+                    ? <span className="flex items-center gap-1 text-xs text-green-400 font-medium bg-green-500/10 border border-green-500/20 px-2 py-1 rounded-full">
+                        <CheckCircle size={11} /> Available
+                      </span>
+                    : <span className="flex items-center gap-1 text-xs text-slate-500 font-medium bg-slate-700/50 border border-slate-600 px-2 py-1 rounded-full">
+                        <XCircle size={11} /> Busy
+                      </span>
+                )}
+              </div>
+
+              {vol.location && (
+                <p className="text-xs text-slate-500 flex items-center gap-1 mb-3">
+                  <MapPin size={11} />{vol.location}
+                </p>
+              )}
+
+              {vol.profile ? (
+                <div className="space-y-3">
+                  {vol.profile.skills && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {vol.profile.skills.split(',').slice(0, 4).map(s => (
+                        <span key={s} className="bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs px-2 py-0.5 rounded-full">{s.trim()}</span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-white/5">
+                    <span>{vol.profile.experience_years} yr{vol.profile.experience_years !== 1 ? 's' : ''} exp</span>
+                    <span className="flex items-center gap-1">
+                      <Star size={11} className="text-yellow-400" />
+                      {vol.profile.total_tasks_completed} tasks done
+                    </span>
+                  </div>
+                  {vol.profile.bio && <p className="text-xs text-slate-500 line-clamp-2">{vol.profile.bio}</p>}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-600 italic">No profile set up yet</p>
+              )}
+            </motion.div>
           ))}
           {filtered.length === 0 && (
-            <div className="col-span-full card text-center py-12 text-gray-400">No volunteers found</div>
+            <motion.div variants={item} className="col-span-full card text-center py-16">
+              <Users size={40} className="text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-500">No volunteers found</p>
+            </motion.div>
           )}
-        </div>
+        </motion.div>
       )}
-    </div>
-  )
-}
-
-function VolunteerCard({ volunteer: v }: { volunteer: Volunteer }) {
-  const p = v.profile
-  return (
-    <div className="card hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <h3 className="font-semibold text-gray-900">{v.full_name}</h3>
-          <p className="text-sm text-gray-500">{v.email}</p>
-        </div>
-        {p && (
-          p.is_available
-            ? <span className="flex items-center gap-1 text-xs text-green-600 font-medium"><CheckCircle size={14} />Available</span>
-            : <span className="flex items-center gap-1 text-xs text-gray-400 font-medium"><XCircle size={14} />Unavailable</span>
-        )}
-      </div>
-
-      {v.location && (
-        <p className="text-xs text-gray-500 flex items-center gap-1 mb-2"><MapPin size={12} />{v.location}</p>
-      )}
-
-      {p ? (
-        <div className="space-y-2">
-          {p.skills && (
-            <div className="flex flex-wrap gap-1">
-              {p.skills.split(',').map(s => (
-                <span key={s} className="bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full">{s.trim()}</span>
-              ))}
-            </div>
-          )}
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>{p.experience_years} yr{p.experience_years !== 1 ? 's' : ''} experience</span>
-            <span className="flex items-center gap-1"><Star size={12} className="text-yellow-400" />{p.total_tasks_completed} tasks done</span>
-          </div>
-          {p.bio && <p className="text-xs text-gray-600 line-clamp-2">{p.bio}</p>}
-        </div>
-      ) : (
-        <p className="text-xs text-gray-400 italic">No profile set up yet</p>
-      )}
-    </div>
+    </motion.div>
   )
 }

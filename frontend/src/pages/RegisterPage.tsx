@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/authStore'
 import api from '../api/client'
 import toast from 'react-hot-toast'
-import { Heart, Loader2 } from 'lucide-react'
+import { Mail, Lock, User, Phone, MapPin, Loader2, ArrowRight, ChevronDown } from 'lucide-react'
+import AnimatedBackground from '../components/AnimatedBackground'
+import Logo from '../components/Logo'
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -23,7 +26,7 @@ export default function RegisterPage() {
     try {
       const { data } = await api.post('/auth/register', form)
       setAuth(data.user, data.access_token)
-      toast.success('Account created successfully!')
+      toast.success('Account created! Welcome aboard 🎉')
       navigate('/dashboard')
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Registration failed')
@@ -32,63 +35,114 @@ export default function RegisterPage() {
     }
   }
 
+  const roles = [
+    { value: 'volunteer', label: '🙋 Volunteer', desc: 'Help with tasks on the ground' },
+    { value: 'field_worker', label: '🗺️ Field Worker', desc: 'Submit community reports' },
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-900 to-primary-700 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="bg-primary-600 rounded-xl p-3">
-            <Heart size={24} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Smart Resource Allocation</h1>
-            <p className="text-sm text-gray-500">Join the platform</p>
-          </div>
+    <div className="min-h-screen animated-bg flex items-center justify-center p-6 overflow-hidden">
+      <AnimatedBackground />
+
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7 }}
+        className="w-full max-w-lg relative z-10"
+      >
+        <div className="flex justify-center mb-8">
+          <Logo size="lg" />
         </div>
 
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Create account</h2>
+        <div className="card glow-blue">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-white" style={{ fontFamily: 'Plus Jakarta Sans' }}>
+              Join the platform
+            </h2>
+            <p className="text-slate-400 text-sm mt-1">Create your account and start making an impact</p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-            <input name="full_name" className="input" placeholder="Your full name" value={form.full_name} onChange={handleChange} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input name="email" type="email" className="input" placeholder="you@example.com" value={form.email} onChange={handleChange} required />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input name="password" type="password" className="input" placeholder="Min 8 characters" value={form.password} onChange={handleChange} required minLength={6} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-            <select name="role" className="input" value={form.role} onChange={handleChange}>
-              <option value="volunteer">Volunteer</option>
-              <option value="field_worker">Field Worker</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Role selector */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-              <input name="phone" className="input" placeholder="+91-..." value={form.phone} onChange={handleChange} />
+              <label className="input-label">I want to join as</label>
+              <div className="grid grid-cols-2 gap-3">
+                {roles.map(r => (
+                  <motion.button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, role: r.value }))}
+                    whileTap={{ scale: 0.97 }}
+                    className={`p-3 rounded-xl border text-left transition-all duration-200 ${
+                      form.role === r.value
+                        ? 'border-blue-500/60 bg-blue-500/10 shadow-glow-blue'
+                        : 'border-white/10 bg-slate-800/50 hover:border-white/20'
+                    }`}
+                  >
+                    <p className="text-sm font-semibold text-white">{r.label}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{r.desc}</p>
+                  </motion.button>
+                ))}
+              </div>
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-              <input name="location" className="input" placeholder="Mumbai" value={form.location} onChange={handleChange} />
+              <label className="input-label">Full Name</label>
+              <div className="relative">
+                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input name="full_name" className="input pl-11" placeholder="Your full name" value={form.full_name} onChange={handleChange} required />
+              </div>
             </div>
-          </div>
 
-          <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2" disabled={loading}>
-            {loading && <Loader2 size={16} className="animate-spin" />}
-            Create Account
-          </button>
-        </form>
+            <div>
+              <label className="input-label">Email</label>
+              <div className="relative">
+                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input name="email" type="email" className="input pl-11" placeholder="you@example.com" value={form.email} onChange={handleChange} required />
+              </div>
+            </div>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Already have an account?{' '}
-          <Link to="/login" className="text-primary-600 font-medium hover:underline">Sign in</Link>
-        </p>
-      </div>
+            <div>
+              <label className="input-label">Password</label>
+              <div className="relative">
+                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input name="password" type="password" className="input pl-11" placeholder="Min 6 characters" value={form.password} onChange={handleChange} required minLength={6} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="input-label">Phone</label>
+                <div className="relative">
+                  <Phone size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input name="phone" className="input pl-11" placeholder="+91-..." value={form.phone} onChange={handleChange} />
+                </div>
+              </div>
+              <div>
+                <label className="input-label">City</label>
+                <div className="relative">
+                  <MapPin size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input name="location" className="input pl-11" placeholder="Mumbai" value={form.location} onChange={handleChange} />
+                </div>
+              </div>
+            </div>
+
+            <motion.button
+              type="submit"
+              className="btn-primary w-full flex items-center justify-center gap-2 py-3 mt-2"
+              disabled={loading}
+              whileTap={{ scale: 0.98 }}
+            >
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <>Create Account <ArrowRight size={16} /></>}
+            </motion.button>
+          </form>
+
+          <p className="text-center text-sm text-slate-500 mt-5">
+            Already have an account?{' '}
+            <Link to="/login" className="text-blue-400 font-medium hover:text-blue-300 transition-colors">Sign in</Link>
+          </p>
+        </div>
+      </motion.div>
     </div>
   )
 }
