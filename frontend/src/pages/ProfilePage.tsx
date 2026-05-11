@@ -46,8 +46,11 @@ export default function ProfilePage() {
             if (err.response?.status === 404) setHasProfile(false)
           }
         }
-        const { data: asgn } = await api.get('/assignments/')
-        setAssignments(asgn)
+        // Only fetch assignments for volunteers
+        if (isVolunteer) {
+          const { data: asgn } = await api.get('/assignments/')
+          setAssignments(asgn)
+        }
       } finally { setLoading(false) }
     }
     fetchData()
@@ -115,11 +118,11 @@ export default function ProfilePage() {
         <div className="grid grid-cols-2 gap-3 mt-5 pt-5 border-t border-white/5">
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <Phone size={14} className="text-slate-600" />
-            {user?.phone || <span className="text-slate-600">Not set</span>}
+            {user?.phone && user.phone !== '+91-9000000001' ? user.phone : <span className="text-slate-600">Not set</span>}
           </div>
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <MapPin size={14} className="text-slate-600" />
-            {user?.location || <span className="text-slate-600">Not set</span>}
+            {user?.location && user.location !== 'Mumbai' ? user.location : <span className="text-slate-600">Not set</span>}
           </div>
         </div>
       </motion.div>

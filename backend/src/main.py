@@ -11,6 +11,7 @@ from src.routes import (
     field_report_routes,
     dashboard_routes,
     admin_routes,
+    user_routes,
 )
 
 # Create database tables
@@ -33,6 +34,7 @@ app.add_middleware(
 
 # Register routes
 app.include_router(auth_routes.router)
+app.include_router(user_routes.router)
 app.include_router(needs_routes.router)
 app.include_router(volunteer_routes.router)
 app.include_router(task_routes.router)
