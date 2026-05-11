@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import api from '../api/client'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
-import { Loader2, User, CheckCircle, Star, MapPin, Phone, Mail, Award } from 'lucide-react'
+import { Loader2, CheckCircle, Award, MapPin, Phone, Lock, Edit2, Save } from 'lucide-react'
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } }
 const item = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } }
@@ -15,13 +15,25 @@ const roleGradients: Record<string, string> = {
 }
 
 export default function ProfilePage() {
-  const { user } = useAuthStore()
+  const { user, setAuth, token } = useAuthStore()
   const isVolunteer = user?.role === 'volunteer'
+
   const [profile, setProfile] = useState<any>(null)
   const [assignments, setAssignments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [hasProfile, setHasProfile] = useState(false)
+
+  // Account edit
+  const [editingAccount, setEditingAccount] = useState(false)
+  const [accountForm, setAccountForm] = useState({ full_name: '', phone: '', location: '' })
+
+  // Password change
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '', confirm_password: '' })
+  const [changingPassword, setChangingPassword] = useState(false)
+
+  // Volunteer profile
   const [form, setForm] = useState({
     skills: '', availability: '', preferred_areas: '',
     experience_years: 0, bio: '', is_available: true
@@ -45,18 +57,57 @@ export default function ProfilePage() {
           } catch (err: any) {
             if (err.response?.status === 404) setHasProfile(false)
           }
-        }
-        // Only fetch assignments for volunteers
-        if (isVolunteer) {
           const { data: asgn } = await api.get('/assignments/')
           setAssignments(asgn)
         }
       } finally { setLoading(false) }
     }
     fetchData()
+    setAccountForm({
+      full_name: user?.full_name || '',
+      phone: user?.phone || '',
+      location: user?.location || ''
+    })
   }, [])
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSaveAccount = async () => {
+    setSaving(true)
+    try {
+      const { data } = await api.patch('/users/me', accountForm)
+      // Update auth store with new user data
+      setAuth(data, token!)
+      toast.success('Profile updated!')
+      setEditingAccount(false)
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to update')
+    } finally { setSaving(false) }
+  }
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      toast.error('New passwords do not match')
+      return
+    }
+    if (passwordForm.new_password.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+    setChangingPassword(true)
+    try {
+      await api.post('/users/me/change-password', {
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password
+      })
+      toast.success('Password changed successfully!')
+      setShowPasswordForm(false)
+      setPasswordForm({ current_password: '', new_password: '', confirm_password: '' })
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to change password')
+    } finally { setChangingPassword(false) }
+  }
+
+  const handleSaveVolunteerProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
     try {
@@ -92,38 +143,119 @@ export default function ProfilePage() {
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-2xl">
       <motion.div variants={item}>
         <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'Plus Jakarta Sans' }}>My Profile</h1>
-        <p className="text-slate-400 text-sm mt-1">Manage your account and volunteer preferences</p>
+        <p className="text-slate-400 text-sm mt-1">Manage your account details and preferences</p>
       </motion.div>
 
       {/* Account card */}
       <motion.div variants={item} className="card">
-        <div className="flex items-center gap-5">
-          <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${roleGradients[user?.role || 'volunteer']} flex items-center justify-center text-white font-bold text-2xl shadow-xl`}>
-            {user?.full_name?.charAt(0).toUpperCase()}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${roleGradients[user?.role || 'volunteer']} flex items-center justify-center text-white font-bold text-2xl shadow-xl`}>
+              {(editingAccount ? accountForm.full_name : user?.full_name)?.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              {editingAccount ? (
+                <input
+                  className="input text-lg font-bold py-1.5 mb-1"
+                  value={accountForm.full_name}
+                  onChange={e => setAccountForm(f => ({...f, full_name: e.target.value}))}
+                  placeholder="Your name"
+                />
+              ) : (
+                <h2 className="text-xl font-bold text-white">{user?.full_name}</h2>
+              )}
+              <p className="text-slate-400 text-sm">{user?.email}</p>
+              <span className={`inline-block mt-1 text-xs font-semibold px-3 py-1 rounded-full bg-gradient-to-r ${roleGradients[user?.role || 'volunteer']} text-white capitalize`}>
+                {user?.role?.replace('_', ' ')}
+              </span>
+            </div>
           </div>
-          <div className="flex-1">
-            <h2 className="text-xl font-bold text-white">{user?.full_name}</h2>
-            <p className="text-slate-400 text-sm">{user?.email}</p>
-            <span className={`inline-block mt-1 text-xs font-semibold px-3 py-1 rounded-full bg-gradient-to-r ${roleGradients[user?.role || 'volunteer']} text-white capitalize`}>
-              {user?.role?.replace('_', ' ')}
-            </span>
-          </div>
-          {isVolunteer && profile && (
-            <div className="text-right">
-              <p className="text-2xl font-bold text-white">{profile.total_tasks_completed}</p>
-              <p className="text-xs text-slate-500">Tasks Done</p>
+          {!editingAccount ? (
+            <motion.button
+              onClick={() => setEditingAccount(true)}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg transition-all"
+            >
+              <Edit2 size={13} /> Edit
+            </motion.button>
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={() => setEditingAccount(false)} className="text-xs text-slate-500 hover:text-white px-3 py-1.5 rounded-lg transition-colors">Cancel</button>
+              <motion.button
+                onClick={handleSaveAccount}
+                whileTap={{ scale: 0.95 }}
+                disabled={saving}
+                className="flex items-center gap-1.5 text-xs btn-primary py-1.5"
+              >
+                {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />} Save
+              </motion.button>
             </div>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-3 mt-5 pt-5 border-t border-white/5">
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <Phone size={14} className="text-slate-600" />
-            {user?.phone && user.phone !== '+91-9000000001' ? user.phone : <span className="text-slate-600">Not set</span>}
+
+        <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
+          <div>
+            <label className="input-label text-xs">Phone</label>
+            {editingAccount ? (
+              <input className="input py-2 text-sm" value={accountForm.phone} onChange={e => setAccountForm(f => ({...f, phone: e.target.value}))} placeholder="+91-..." />
+            ) : (
+              <p className="text-sm text-slate-400 flex items-center gap-2 mt-1">
+                <Phone size={13} className="text-slate-600" />
+                {user?.phone || <span className="text-slate-600">Not set</span>}
+              </p>
+            )}
           </div>
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <MapPin size={14} className="text-slate-600" />
-            {user?.location && user.location !== 'Mumbai' ? user.location : <span className="text-slate-600">Not set</span>}
+          <div>
+            <label className="input-label text-xs">City</label>
+            {editingAccount ? (
+              <input className="input py-2 text-sm" value={accountForm.location} onChange={e => setAccountForm(f => ({...f, location: e.target.value}))} placeholder="Mumbai" />
+            ) : (
+              <p className="text-sm text-slate-400 flex items-center gap-2 mt-1">
+                <MapPin size={13} className="text-slate-600" />
+                {user?.location || <span className="text-slate-600">Not set</span>}
+              </p>
+            )}
           </div>
+        </div>
+
+        {/* Change password */}
+        <div className="mt-4 pt-4 border-t border-white/5">
+          {!showPasswordForm ? (
+            <button
+              onClick={() => setShowPasswordForm(true)}
+              className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
+            >
+              <Lock size={14} /> Change Password
+            </button>
+          ) : (
+            <form onSubmit={handleChangePassword} className="space-y-3">
+              <p className="text-sm font-medium text-white">Change Password</p>
+              <input
+                type="password" className="input" placeholder="Current password"
+                value={passwordForm.current_password}
+                onChange={e => setPasswordForm(f => ({...f, current_password: e.target.value}))}
+                required
+              />
+              <input
+                type="password" className="input" placeholder="New password (min 6 chars)"
+                value={passwordForm.new_password}
+                onChange={e => setPasswordForm(f => ({...f, new_password: e.target.value}))}
+                required minLength={6}
+              />
+              <input
+                type="password" className="input" placeholder="Confirm new password"
+                value={passwordForm.confirm_password}
+                onChange={e => setPasswordForm(f => ({...f, confirm_password: e.target.value}))}
+                required
+              />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setShowPasswordForm(false)} className="btn-secondary text-sm py-2">Cancel</button>
+                <button type="submit" className="btn-primary text-sm py-2 flex items-center gap-2" disabled={changingPassword}>
+                  {changingPassword && <Loader2 size={13} className="animate-spin" />} Update Password
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </motion.div>
 
@@ -131,9 +263,9 @@ export default function ProfilePage() {
       {isVolunteer && (
         <motion.div variants={item} className="card">
           <h2 className="font-bold text-white text-lg mb-5">
-            {hasProfile ? 'Update Volunteer Profile' : '✨ Create Your Volunteer Profile'}
+            {hasProfile ? 'Volunteer Profile' : '✨ Create Your Volunteer Profile'}
           </h2>
-          <form onSubmit={handleSave} className="space-y-4">
+          <form onSubmit={handleSaveVolunteerProfile} className="space-y-4">
             <div>
               <label className="input-label">Skills (comma-separated)</label>
               <input className="input" placeholder="medical, teaching, driving, logistics..." value={form.skills} onChange={e => setForm(f => ({...f, skills: e.target.value}))} />
@@ -160,9 +292,7 @@ export default function ProfilePage() {
             <div
               onClick={() => setForm(f => ({...f, is_available: !f.is_available}))}
               className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all duration-200 ${
-                form.is_available
-                  ? 'bg-green-500/10 border-green-500/30'
-                  : 'bg-slate-800/50 border-white/10'
+                form.is_available ? 'bg-green-500/10 border-green-500/30' : 'bg-slate-800/50 border-white/10'
               }`}
             >
               <div className={`w-10 h-5 rounded-full transition-all duration-300 relative ${form.is_available ? 'bg-green-500' : 'bg-slate-700'}`}>
@@ -181,48 +311,51 @@ export default function ProfilePage() {
         </motion.div>
       )}
 
-      {/* Assignments */}
-      <motion.div variants={item} className="card">
-        <h2 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
-          <Award size={18} className="text-yellow-400" /> My Assignments ({assignments.length})
-        </h2>
-        {assignments.length === 0 ? (
-          <p className="text-sm text-slate-500">No assignments yet. Accept a task to get started!</p>
-        ) : (
-          <div className="space-y-3">
-            {assignments.map(a => (
-              <motion.div
-                key={a.id}
-                whileHover={{ x: 4 }}
-                className="flex items-center justify-between p-4 rounded-xl bg-slate-800/50 border border-white/5 hover:border-white/10 transition-all"
-              >
-                <div>
-                  <p className="text-sm font-medium text-white">Task #{a.task_id.slice(0, 8)}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Match: <span className="text-blue-400 font-semibold">{a.match_score}%</span> · {new Date(a.assigned_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
-                    a.status === 'completed' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                    a.status === 'accepted' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
-                    'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-                  }`}>{a.status}</span>
-                  {a.status === 'accepted' && (
-                    <motion.button
-                      onClick={() => handleComplete(a.id)}
-                      whileTap={{ scale: 0.95 }}
-                      className="text-xs text-green-400 hover:text-green-300 flex items-center gap-1 transition-colors"
-                    >
-                      <CheckCircle size={13} /> Complete
-                    </motion.button>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </motion.div>
+      {/* Assignments — volunteers only */}
+      {isVolunteer && (
+        <motion.div variants={item} className="card">
+          <h2 className="font-bold text-white text-lg mb-4 flex items-center gap-2">
+            <Award size={18} className="text-yellow-400" /> My Assignments ({assignments.length})
+          </h2>
+          {assignments.length === 0 ? (
+            <p className="text-sm text-slate-500">No assignments yet. Accept a task to get started!</p>
+          ) : (
+            <div className="space-y-3">
+              {assignments.map(a => (
+                <motion.div
+                  key={a.id}
+                  whileHover={{ x: 4 }}
+                  className="flex items-center justify-between p-4 rounded-xl bg-slate-800/50 border border-white/5 hover:border-white/10 transition-all"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-white">Task #{a.task_id.slice(0, 8)}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Match: <span className="text-blue-400 font-semibold">{a.match_score}%</span> · {new Date(a.assigned_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
+                      a.status === 'completed' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                      a.status === 'accepted' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' :
+                      a.status === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                      'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                    }`}>{a.status}</span>
+                    {a.status === 'accepted' && (
+                      <motion.button
+                        onClick={() => handleComplete(a.id)}
+                        whileTap={{ scale: 0.95 }}
+                        className="text-xs text-green-400 hover:text-green-300 flex items-center gap-1 transition-colors"
+                      >
+                        <CheckCircle size={13} /> Complete
+                      </motion.button>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
     </motion.div>
   )
 }

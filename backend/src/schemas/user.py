@@ -38,6 +38,28 @@ class UserUpdate(BaseModel):
     location: Optional[str] = None
 
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+
+class AdminCreateUser(BaseModel):
+    email: EmailStr
+    full_name: str
+    password: str
+    role: UserRole
+    phone: Optional[str] = None
+    location: Optional[str] = None
+
+
+class AdminUpdateUser(BaseModel):
+    full_name: Optional[str] = None
+    role: Optional[UserRole] = None
+    is_active: Optional[bool] = None
+    phone: Optional[str] = None
+    location: Optional[str] = None
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str

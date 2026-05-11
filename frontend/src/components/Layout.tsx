@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/authStore'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, AlertTriangle, CheckSquare, Users,
-  FileText, User, LogOut, Menu, X
+  FileText, User, LogOut, Menu, Shield
 } from 'lucide-react'
 import { useState } from 'react'
 import clsx from 'clsx'
@@ -16,6 +16,7 @@ const navItems = [
   { to: '/tasks', label: 'Tasks', icon: CheckSquare, roles: ['admin', 'volunteer'], color: 'text-green-400' },
   { to: '/volunteers', label: 'Volunteers', icon: Users, roles: ['admin'], color: 'text-purple-400' },
   { to: '/field-reports', label: 'Field Reports', icon: FileText, roles: ['admin', 'field_worker'], color: 'text-yellow-400' },
+  { to: '/admin', label: 'User Management', icon: Shield, roles: ['admin'], color: 'text-indigo-400' },
   { to: '/profile', label: 'My Profile', icon: User, roles: ['admin', 'volunteer', 'field_worker'], color: 'text-cyan-400' },
 ]
 

@@ -8,6 +8,7 @@ import TasksPage from './pages/TasksPage'
 import VolunteersPage from './pages/VolunteersPage'
 import FieldReportsPage from './pages/FieldReportsPage'
 import ProfilePage from './pages/ProfilePage'
+import AdminPage from './pages/AdminPage'
 import Layout from './components/Layout'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="tasks" element={<TasksPage />} />
         <Route path="volunteers" element={<VolunteersPage />} />
         <Route path="field-reports" element={<FieldReportsPage />} />
+        <Route path="admin" element={<AdminPage />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
     </Routes>
