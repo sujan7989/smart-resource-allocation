@@ -13,6 +13,19 @@ from src.auth import get_current_user, require_admin
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
 
+@router.get("/public-stats")
+def get_public_stats(db: Session = Depends(get_db)):
+    """Public stats shown on the login page — no auth required."""
+    total_affected = db.query(func.sum(CommunityNeed.affected_people)).scalar() or 0
+    open_needs = db.query(CommunityNeed).filter(CommunityNeed.status == NeedStatus.OPEN).count()
+    available_volunteers = db.query(VolunteerProfile).filter(VolunteerProfile.is_available == True).count()
+    return {
+        "people": int(total_affected),
+        "needs": open_needs,
+        "volunteers": available_volunteers,
+    }
+
+
 @router.get("/stats")
 def get_dashboard_stats(
     db: Session = Depends(get_db),

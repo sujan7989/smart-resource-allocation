@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/authStore'
@@ -15,18 +15,22 @@ const features = [
   { icon: Zap, label: 'Field Reports', desc: 'Ground-level data collection', color: 'text-yellow-400' },
 ]
 
-const demoAccounts = [
-  { role: 'Admin', email: 'admin@smartalloc.org', password: 'Admin@123', color: 'from-purple-500 to-indigo-500' },
-  { role: 'Volunteer', email: 'priya@volunteer.org', password: 'Volunteer@123', color: 'from-blue-500 to-cyan-500' },
-  { role: 'Field Worker', email: 'field@ngo.org', password: 'Field@123', color: 'from-green-500 to-emerald-500' },
-]
-
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [liveStats, setLiveStats] = useState<{
+    people: number; needs: number; volunteers: number
+  } | null>(null)
   const { setAuth } = useAuthStore()
   const navigate = useNavigate()
+
+  // Fetch real live stats for the login page (public endpoint)
+  useEffect(() => {
+    api.get('/dashboard/public-stats')
+      .then(r => setLiveStats(r.data))
+      .catch(() => setLiveStats(null))
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,10 +47,13 @@ export default function LoginPage() {
     }
   }
 
-  const fillDemo = (acc: typeof demoAccounts[0]) => {
-    setEmail(acc.email)
-    setPassword(acc.password)
-  }
+  const stats = liveStats
+    ? [
+        [liveStats.people.toLocaleString(), 'People Helped'],
+        [String(liveStats.needs), 'Active Needs'],
+        [String(liveStats.volunteers), 'Volunteers Ready'],
+      ]
+    : null
 
   return (
     <div className="min-h-screen animated-bg flex overflow-hidden">
@@ -80,7 +87,8 @@ export default function LoginPage() {
               transition={{ delay: 0.5, duration: 0.7 }}
               className="text-slate-400 text-lg mt-4 leading-relaxed"
             >
-              Data-driven coordination platform that matches the right volunteers to the most urgent community needs — in real time.
+              Data-driven coordination platform that matches the right volunteers
+              to the most urgent community needs — in real time.
             </motion.p>
           </div>
 
@@ -101,19 +109,31 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Live stats from real database */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1, duration: 0.7 }}
           className="flex gap-8"
         >
-          {[['1,150+', 'People Helped'], ['4', 'Active Needs'], ['3', 'Volunteers Ready']].map(([val, label]) => (
-            <div key={label}>
-              <p className="text-2xl font-bold text-gradient">{val}</p>
-              <p className="text-slate-500 text-xs">{label}</p>
+          {stats ? (
+            stats.map(([val, label]) => (
+              <div key={label}>
+                <p className="text-2xl font-bold text-gradient">{val}</p>
+                <p className="text-slate-500 text-xs">{label}</p>
+              </div>
+            ))
+          ) : (
+            // Loading state — no fake numbers shown
+            <div className="flex gap-8">
+              {['People Helped', 'Active Needs', 'Volunteers Ready'].map(label => (
+                <div key={label}>
+                  <div className="h-7 w-12 bg-slate-800 rounded animate-pulse mb-1" />
+                  <p className="text-slate-500 text-xs">{label}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </motion.div>
       </motion.div>
 
@@ -182,25 +202,6 @@ export default function LoginPage() {
                 )}
               </motion.button>
             </form>
-
-            <div className="mt-6">
-              <p className="text-xs text-slate-500 text-center mb-3">Quick demo access</p>
-              <div className="grid grid-cols-3 gap-2">
-                {demoAccounts.map(acc => (
-                  <motion.button
-                    key={acc.role}
-                    onClick={() => fillDemo(acc)}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    className={`bg-gradient-to-br ${acc.color} p-0.5 rounded-xl`}
-                  >
-                    <div className="bg-slate-900 rounded-[11px] px-2 py-2 text-center hover:bg-slate-800 transition-colors">
-                      <p className="text-xs font-semibold text-white">{acc.role}</p>
-                    </div>
-                  </motion.button>
-                ))}
-              </div>
-            </div>
 
             <p className="text-center text-sm text-slate-500 mt-6">
               New here?{' '}
