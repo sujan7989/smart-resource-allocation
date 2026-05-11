@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offline — Smart Resource Allocation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      color: white; text-align: center; padding: 24px;
+    }
+    .card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 48px 32px;
+      max-width: 400px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .icon { font-size: 64px; margin-bottom: 24px; }
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 12px; }
+    p { font-size: 15px; opacity: 0.85; line-height: 1.6; margin-bottom: 24px; }
+    .tip {
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 13px;
+      opacity: 0.9;
+      text-align: left;
+    }
+    .tip strong { display: block; margin-bottom: 8px; }
+    .tip ul { padding-left: 16px; }
+    .tip li { margin-bottom: 4px; }
+    button {
+      margin-top: 24px;
+      background: white;
+      color: #1d4ed8;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">📡</div>
+    <h1>You're Offline</h1>
+    <p>No internet connection detected. Some features may be limited, but your cached data is still available.</p>
+    <div class="tip">
+      <strong>✅ Available offline:</strong>
+      <ul>
+        <li>View community needs</li>
+        <li>View your tasks</li>
+        <li>View field reports</li>
+        <li>Dashboard stats</li>
+      </ul>
+    </div>
+    <button onclick="window.location.reload()">Try Again</button>
+  </div>
+</body>
+</html>

@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import api from '../api/client'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
+  PieChart, Pie, Cell
 } from 'recharts'
-import { AlertTriangle, Users, CheckSquare, FileText, TrendingUp, MapPin } from 'lucide-react'
+import { AlertTriangle, Users, CheckSquare, TrendingUp, MapPin, Bell, FileText } from 'lucide-react'
+import { usePushNotifications } from '../hooks/usePushNotifications'
 
 const URGENCY_COLORS: Record<string, string> = {
   critical: '#dc2626',
@@ -30,6 +31,17 @@ export default function DashboardPage() {
   const [byCity, setByCity] = useState<any[]>([])
   const [topNeeds, setTopNeeds] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const { permission, supported, requestPermission, sendLocalNotification } = usePushNotifications()
+
+  const handleEnableNotifications = async () => {
+    const granted = await requestPermission()
+    if (granted) {
+      sendLocalNotification(
+        'Notifications Enabled ✅',
+        'You will now receive alerts for critical community needs and task assignments.'
+      )
+    }
+  }
 
   useEffect(() => {
     Promise.all([
@@ -59,6 +71,21 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-500 text-sm mt-1">Real-time overview of community needs and volunteer coordination</p>
       </div>
+
+      {/* Notification permission banner */}
+      {supported && permission === 'default' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Bell size={20} className="text-blue-500 shrink-0" />
+            <p className="text-sm text-blue-800">
+              <span className="font-semibold">Enable notifications</span> to get alerted for critical needs and task assignments
+            </p>
+          </div>
+          <button onClick={handleEnableNotifications} className="btn-primary text-sm shrink-0 py-1.5">
+            Enable
+          </button>
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
