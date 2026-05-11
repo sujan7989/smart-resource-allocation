@@ -10,6 +10,7 @@ from src.routes import (
     assignment_routes,
     field_report_routes,
     dashboard_routes,
+    admin_routes,
 )
 
 # Create database tables
@@ -38,6 +39,7 @@ app.include_router(task_routes.router)
 app.include_router(assignment_routes.router)
 app.include_router(field_report_routes.router)
 app.include_router(dashboard_routes.router)
+app.include_router(admin_routes.router)
 
 
 @app.get("/")
