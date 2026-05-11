@@ -29,8 +29,11 @@ def list_assignments(
 def create_assignment(
     data: AssignmentCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(get_current_user)
 ):
+    # Admin can assign anyone. Volunteer can only assign themselves.
+    if current_user.role.value != "admin" and data.volunteer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Volunteers can only accept tasks for themselves")
     # Validate task and volunteer exist
     task = db.query(Task).filter(Task.id == data.task_id).first()
     if not task:
