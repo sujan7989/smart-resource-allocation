@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: smart-resource-allocation-api
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python seed_prod.py && uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: smart-resource-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://smart-resource-allocation.vercel.app
+      - key: PYTHON_VERSION
+        value: 3.11.9
+
+databases:
+  - name: smart-resource-db
+    databaseName: smart_resource_db
+    user: smartalloc
+    region: singapore
+    plan: free
