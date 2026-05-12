@@ -6,6 +6,7 @@ import App from './App'
 import InstallPrompt from './components/InstallPrompt'
 import OfflineBanner from './components/OfflineBanner'
 import UpdatePrompt from './components/UpdatePrompt'
+import './i18n'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -19,7 +20,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         position="top-right"
         toastOptions={{
           duration: 3000,
-          style: { fontSize: '14px' }
+          style: { fontSize: '14px' },
         }}
       />
     </BrowserRouter>

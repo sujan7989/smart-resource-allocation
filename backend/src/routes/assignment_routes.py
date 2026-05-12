@@ -30,6 +30,7 @@ def _build_detail(assignment: Assignment, db: Session) -> AssignmentDetail:
         completed_at=assignment.completed_at,
         feedback=assignment.feedback,
         rating=assignment.rating,
+        hours_spent=assignment.hours_spent,
         task_title=task.title.strip() if task else None,
         task_city=task.city if task else None,
         volunteer_name=volunteer.full_name if volunteer else None,
@@ -147,7 +148,7 @@ def update_assignment(
 
     if updates.status == AssignmentStatus.COMPLETED:
         assignment.completed_at = datetime.now(timezone.utc)
-        # Increment volunteer's completed task counter
+        # Increment volunteer's completed task counter and hours
         profile = (
             db.query(VolunteerProfile)
             .filter(VolunteerProfile.user_id == assignment.volunteer_id)
@@ -155,9 +156,11 @@ def update_assignment(
         )
         if profile:
             profile.total_tasks_completed += 1
+            # Accumulate volunteer hours
+            if updates.hours_spent is not None and updates.hours_spent > 0:
+                profile.total_hours_contributed = (profile.total_hours_contributed or 0) + updates.hours_spent
             # Update volunteer rating if a rating was provided
             if updates.rating is not None:
-                # Compute running average: (old_rating * old_count + new_rating) / new_count
                 old_count = profile.total_tasks_completed - 1
                 if old_count > 0:
                     profile.rating = round(

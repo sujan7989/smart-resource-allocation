@@ -15,12 +15,22 @@ class AssignmentUpdate(BaseModel):
     notes: Optional[str] = None
     feedback: Optional[str] = None
     rating: Optional[int] = None
+    hours_spent: Optional[int] = None
 
     @field_validator("rating")
     @classmethod
     def validate_rating(cls, v: Optional[int]) -> Optional[int]:
         if v is not None and not (1 <= v <= 5):
             raise ValueError("Rating must be between 1 and 5")
+        return v
+
+    @field_validator("hours_spent")
+    @classmethod
+    def validate_hours(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("Hours spent cannot be negative")
+        if v is not None and v > 720:
+            raise ValueError("Hours spent cannot exceed 720 (30 days)")
         return v
 
 
@@ -52,6 +62,7 @@ class AssignmentDetail(BaseModel):
     completed_at: Optional[datetime] = None
     feedback: Optional[str] = None
     rating: Optional[int] = None
+    hours_spent: Optional[int] = None
     task_title: Optional[str] = None
     task_city: Optional[str] = None
     volunteer_name: Optional[str] = None

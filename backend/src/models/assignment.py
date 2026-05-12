@@ -25,7 +25,8 @@ class Assignment(Base):
     assigned_at = Column(DateTime, server_default=func.now(), nullable=False)
     completed_at = Column(DateTime, nullable=True)
     feedback = Column(Text, nullable=True)
-    rating = Column(Integer, nullable=True)  # 1-5 rating given by volunteer after completion
+    rating = Column(Integer, nullable=True)   # 1-5 rating given by volunteer after completion
+    hours_spent = Column(Integer, nullable=True)  # volunteer-hours contributed
 
     # Relationships
     task = relationship("Task", back_populates="assignments")

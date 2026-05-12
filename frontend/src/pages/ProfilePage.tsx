@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
 import {
   Loader2, CheckCircle, Award, MapPin, Phone, Lock, Edit2, Save,
-  Star, MessageSquare, FileText, Eye,
+  Star, MessageSquare, FileText, Eye, Clock,
 } from 'lucide-react'
 
 const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.08 } } }
@@ -69,7 +69,7 @@ export default function ProfilePage() {
 
   // Complete task modal
   const [completingAssignment, setCompletingAssignment] = useState<Assignment | null>(null)
-  const [completeForm, setCompleteForm] = useState({ feedback: '', rating: 5 })
+  const [completeForm, setCompleteForm] = useState({ feedback: '', rating: 5, hours_spent: '' })
   const [completing, setCompleting] = useState(false)
 
   useEffect(() => {
@@ -171,7 +171,7 @@ export default function ProfilePage() {
 
   const openCompleteModal = (assignment: Assignment) => {
     setCompletingAssignment(assignment)
-    setCompleteForm({ feedback: '', rating: 5 })
+    setCompleteForm({ feedback: '', rating: 5, hours_spent: '' })
   }
 
   const handleComplete = async (e: React.FormEvent) => {
@@ -183,6 +183,7 @@ export default function ProfilePage() {
         status: 'completed',
         feedback: completeForm.feedback || undefined,
         rating: completeForm.rating,
+        hours_spent: completeForm.hours_spent ? parseInt(completeForm.hours_spent) : undefined,
       })
       toast.success('Task marked as completed!')
       setCompletingAssignment(null)
@@ -604,7 +605,20 @@ export default function ProfilePage() {
                     maxLength={500}
                   />
                 </div>
-                <div className="flex gap-3 justify-end">
+                <div>
+                  <label className="input-label flex items-center gap-2">
+                    <Clock size={14} /> Hours Spent <span className="text-slate-600">(optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    className="input"
+                    placeholder="e.g. 4"
+                    min={0}
+                    max={720}
+                    value={completeForm.hours_spent}
+                    onChange={e => setCompleteForm(f => ({ ...f, hours_spent: e.target.value }))}
+                  />
+                </div>                <div className="flex gap-3 justify-end">
                   <button
                     type="button"
                     onClick={() => setCompletingAssignment(null)}

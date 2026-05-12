@@ -17,6 +17,7 @@ class VolunteerProfile(Base):
     bio = Column(Text, nullable=True)
     is_available = Column(Boolean, default=True)
     total_tasks_completed = Column(Integer, default=0)
+    total_hours_contributed = Column(Integer, default=0)  # cumulative volunteer hours
     rating = Column(Integer, default=0)            # 0-5 average rating
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

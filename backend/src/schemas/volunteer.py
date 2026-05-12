@@ -78,6 +78,7 @@ class VolunteerProfileResponse(BaseModel):
     bio: Optional[str] = None
     is_available: bool
     total_tasks_completed: int
+    total_hours_contributed: int
     rating: int
     created_at: datetime
     updated_at: datetime

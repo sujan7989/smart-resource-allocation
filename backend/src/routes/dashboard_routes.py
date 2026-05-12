@@ -54,12 +54,18 @@ def get_dashboard_stats(
 
     total_affected = db.query(func.sum(CommunityNeed.affected_people)).scalar() or 0
 
+    # Total volunteer hours contributed
+    total_hours = db.query(func.sum(Assignment.hours_spent)).filter(
+        Assignment.status == AssignmentStatus.COMPLETED,
+        Assignment.hours_spent.isnot(None)
+    ).scalar() or 0
+
     return {
         "needs": {
             "total": total_needs,
             "open": open_needs,
             "critical": critical_needs,
-            "total_affected_people": total_affected,
+            "total_affected_people": int(total_affected),
         },
         "volunteers": {
             "total": total_volunteers,
@@ -76,7 +82,10 @@ def get_dashboard_stats(
         },
         "field_reports": {
             "pending_review": pending_reports,
-        }
+        },
+        "impact": {
+            "total_volunteer_hours": int(total_hours),
+        },
     }
 
 
@@ -143,3 +152,82 @@ def top_urgent_needs(
     ).order_by(CommunityNeed.urgency_score.desc()).limit(10).all()
 
     return needs
+
+
+@router.get("/impact")
+def get_impact_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Impact analytics: volunteer hours, resolved needs, top volunteers,
+    needs resolved per month (last 6 months).
+    """
+    from src.models.volunteer import VolunteerProfile
+    from src.models.assignment import Assignment, AssignmentStatus
+    from sqlalchemy import extract
+    from datetime import datetime, timezone
+    import calendar
+
+    # Total volunteer hours contributed
+    total_hours = db.query(func.sum(Assignment.hours_spent)).filter(
+        Assignment.status == AssignmentStatus.COMPLETED
+    ).scalar() or 0
+
+    # Total resolved needs
+    resolved_needs = db.query(CommunityNeed).filter(
+        CommunityNeed.status == NeedStatus.RESOLVED
+    ).count()
+
+    # Total completed tasks
+    completed_tasks = db.query(Task).filter(Task.status == TaskStatus.COMPLETED).count()
+
+    # Total people helped (sum of affected_people for resolved needs)
+    people_helped = db.query(func.sum(CommunityNeed.affected_people)).filter(
+        CommunityNeed.status == NeedStatus.RESOLVED
+    ).scalar() or 0
+
+    # Top 5 volunteers by tasks completed
+    top_volunteers_raw = (
+        db.query(VolunteerProfile, User)
+        .join(User, VolunteerProfile.user_id == User.id)
+        .filter(VolunteerProfile.total_tasks_completed > 0)
+        .order_by(VolunteerProfile.total_tasks_completed.desc())
+        .limit(5)
+        .all()
+    )
+    top_volunteers = [
+        {
+            "name": u.full_name,
+            "tasks_completed": p.total_tasks_completed,
+            "hours_contributed": p.total_hours_contributed or 0,
+            "rating": p.rating,
+        }
+        for p, u in top_volunteers_raw
+    ]
+
+    # Needs resolved per month (last 6 months)
+    now = datetime.now(timezone.utc)
+    monthly = []
+    for i in range(5, -1, -1):
+        month = (now.month - i - 1) % 12 + 1
+        year = now.year - ((now.month - i - 1) // 12)
+        count = db.query(CommunityNeed).filter(
+            CommunityNeed.status == NeedStatus.RESOLVED,
+            extract("month", CommunityNeed.updated_at) == month,
+            extract("year", CommunityNeed.updated_at) == year,
+        ).count()
+        monthly.append({
+            "month": calendar.month_abbr[month],
+            "year": year,
+            "resolved": count,
+        })
+
+    return {
+        "total_volunteer_hours": int(total_hours),
+        "resolved_needs": resolved_needs,
+        "completed_tasks": completed_tasks,
+        "people_helped": int(people_helped),
+        "top_volunteers": top_volunteers,
+        "monthly_resolved": monthly,
+    }

@@ -134,11 +134,13 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-charts': ['recharts'],
-          'vendor-motion': ['framer-motion'],
-          'vendor-ui': ['lucide-react', 'clsx', 'react-hot-toast'],
-          'vendor-state': ['zustand', 'axios'],
+          'vendor-react':   ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts':  ['recharts'],
+          'vendor-motion':  ['framer-motion'],
+          'vendor-ui':      ['lucide-react', 'clsx', 'react-hot-toast'],
+          'vendor-state':   ['zustand', 'axios'],
+          'vendor-map':     ['leaflet', 'react-leaflet'],
+          'vendor-i18n':    ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
         },
       },
     },

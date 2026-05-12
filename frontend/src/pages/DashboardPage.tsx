@@ -1,11 +1,15 @@
 import { useEffect, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import api from '../api/client'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, AreaChart, Area
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts'
-import { AlertTriangle, Users, CheckSquare, TrendingUp, MapPin, Bell, FileText, Activity } from 'lucide-react'
+import {
+  AlertTriangle, Users, CheckSquare, TrendingUp,
+  MapPin, Bell, FileText, Activity, Map, Clock,
+} from 'lucide-react'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 
 const URGENCY_COLORS: Record<string, string> = {
@@ -14,19 +18,19 @@ const URGENCY_COLORS: Record<string, string> = {
 
 const container = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.08 } }
+  show: { opacity: 1, transition: { staggerChildren: 0.08 } },
 }
 const item = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } }
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
 }
 
 function AnimatedNumber({ value }: { value: number }) {
   const [display, setDisplay] = useState(0)
-  const ref = useRef(false)
+  const started = useRef(false)
   useEffect(() => {
-    if (ref.current) return
-    ref.current = true
+    if (started.current) return
+    started.current = true
     const duration = 1200
     const start = Date.now()
     const tick = () => {
@@ -47,10 +51,11 @@ interface Stats {
   tasks: { total: number; open: number; completed: number }
   assignments: { total: number; active: number }
   field_reports: { pending_review: number }
+  impact?: { total_volunteer_hours: number }
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
+  if (active && payload?.length) {
     return (
       <div className="bg-slate-800 border border-white/10 rounded-xl px-4 py-3 shadow-2xl">
         <p className="text-slate-400 text-xs mb-1">{label}</p>
@@ -62,6 +67,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 }
 
 export default function DashboardPage() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<Stats | null>(null)
   const [byCategory, setByCategory] = useState<any[]>([])
   const [byUrgency, setByUrgency] = useState<any[]>([])
@@ -97,36 +103,53 @@ export default function DashboardPage() {
     <div className="flex items-center justify-center h-64">
       <div className="relative">
         <div className="w-12 h-12 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin" />
-        <div className="absolute inset-2 rounded-full border-2 border-purple-500/20 border-b-purple-500 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
+        <div className="absolute inset-2 rounded-full border-2 border-purple-500/20 border-b-purple-500 animate-spin"
+          style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
       </div>
     </div>
   )
 
   const statCards = [
     {
-      icon: AlertTriangle, label: 'Open Needs', value: stats?.needs.open ?? 0,
-      sub: `${stats?.needs.critical ?? 0} critical`, color: 'from-red-500 to-orange-500',
-      bg: 'from-red-500/10 to-orange-500/10', border: 'border-red-500/20', glow: 'shadow-red-500/10'
+      icon: AlertTriangle, label: 'Open Needs',
+      value: stats?.needs.open ?? 0,
+      sub: `${stats?.needs.critical ?? 0} critical`,
+      color: 'from-red-500 to-orange-500',
+      bg: 'from-red-500/10 to-orange-500/10', border: 'border-red-500/20', glow: 'shadow-red-500/10',
     },
     {
-      icon: Users, label: 'Available Volunteers', value: stats?.volunteers.available ?? 0,
-      sub: `of ${stats?.volunteers.total} total`, color: 'from-blue-500 to-cyan-500',
-      bg: 'from-blue-500/10 to-cyan-500/10', border: 'border-blue-500/20', glow: 'shadow-blue-500/10'
+      icon: Users, label: 'Available Volunteers',
+      value: stats?.volunteers.available ?? 0,
+      sub: `of ${stats?.volunteers.total} total`,
+      color: 'from-blue-500 to-cyan-500',
+      bg: 'from-blue-500/10 to-cyan-500/10', border: 'border-blue-500/20', glow: 'shadow-blue-500/10',
     },
     {
-      icon: CheckSquare, label: 'Open Tasks', value: stats?.tasks.open ?? 0,
-      sub: `${stats?.tasks.completed} completed`, color: 'from-green-500 to-emerald-500',
-      bg: 'from-green-500/10 to-emerald-500/10', border: 'border-green-500/20', glow: 'shadow-green-500/10'
+      icon: CheckSquare, label: 'Open Tasks',
+      value: stats?.tasks.open ?? 0,
+      sub: `${stats?.tasks.completed} completed`,
+      color: 'from-green-500 to-emerald-500',
+      bg: 'from-green-500/10 to-emerald-500/10', border: 'border-green-500/20', glow: 'shadow-green-500/10',
     },
     {
-      icon: TrendingUp, label: 'People Affected', value: stats?.needs.total_affected_people ?? 0,
-      sub: 'across all needs', color: 'from-purple-500 to-indigo-500',
-      bg: 'from-purple-500/10 to-indigo-500/10', border: 'border-purple-500/20', glow: 'shadow-purple-500/10'
+      icon: TrendingUp, label: 'People Affected',
+      value: stats?.needs.total_affected_people ?? 0,
+      sub: 'across all needs',
+      color: 'from-purple-500 to-indigo-500',
+      bg: 'from-purple-500/10 to-indigo-500/10', border: 'border-purple-500/20', glow: 'shadow-purple-500/10',
+    },
+    {
+      icon: Clock, label: 'Volunteer Hours',
+      value: stats?.impact?.total_volunteer_hours ?? 0,
+      sub: 'hours contributed',
+      color: 'from-orange-500 to-amber-500',
+      bg: 'from-orange-500/10 to-amber-500/10', border: 'border-orange-500/20', glow: 'shadow-orange-500/10',
     },
   ]
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+
       {/* Header */}
       <motion.div variants={item} className="flex items-start justify-between">
         <div>
@@ -151,17 +174,15 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((card, i) => (
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {statCards.map((card) => (
           <motion.div
             key={card.label}
             variants={item}
             whileHover={{ y: -4, scale: 1.02 }}
             className={`relative overflow-hidden rounded-2xl border ${card.border} bg-gradient-to-br ${card.bg} p-5 shadow-xl ${card.glow} cursor-default`}
           >
-            {/* Background glow */}
             <div className={`absolute -top-6 -right-6 w-24 h-24 rounded-full bg-gradient-to-br ${card.color} opacity-10 blur-2xl`} />
-
             <div className={`inline-flex p-2.5 rounded-xl bg-gradient-to-br ${card.color} shadow-lg mb-3`}>
               <card.icon size={18} className="text-white" />
             </div>
@@ -195,15 +216,17 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </motion.div>
 
-        {/* Needs by Urgency */}
+        {/* Urgency Breakdown */}
         <motion.div variants={item} className="card">
           <h2 className="font-semibold text-white mb-1">Urgency Breakdown</h2>
           <p className="text-xs text-slate-500 mb-4">Priority levels across all needs</p>
           <div className="flex items-center gap-6">
             <ResponsiveContainer width="60%" height={200}>
               <PieChart>
-                <Pie data={byUrgency} dataKey="count" nameKey="urgency" cx="50%" cy="50%"
-                  innerRadius={55} outerRadius={85} paddingAngle={3}>
+                <Pie
+                  data={byUrgency} dataKey="count" nameKey="urgency"
+                  cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3}
+                >
                   {byUrgency.map((entry, i) => (
                     <Cell key={i} fill={URGENCY_COLORS[entry.urgency] || '#94a3b8'} />
                   ))}
@@ -275,7 +298,9 @@ export default function DashboardPage() {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-white truncate">{n.title}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{n.city} · {n.affected_people.toLocaleString()} affected</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {n.city}{n.country ? `, ${n.country}` : ''} · {n.affected_people.toLocaleString()} affected
+                  </p>
                 </div>
                 <span className={`badge-${n.urgency} shrink-0`}>{n.urgency}</span>
               </motion.div>
@@ -284,6 +309,24 @@ export default function DashboardPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Map quick-link */}
+      <motion.div
+        variants={item}
+        onClick={() => navigate('/map')}
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        className="flex items-center gap-4 p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 cursor-pointer hover:bg-cyan-500/15 transition-colors"
+      >
+        <div className="p-2 rounded-xl bg-cyan-500/20">
+          <Map size={18} className="text-cyan-400" />
+        </div>
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-cyan-300">View Needs Map</p>
+          <p className="text-xs text-slate-500">Geographic view of all community needs worldwide</p>
+        </div>
+        <MapPin size={16} className="text-cyan-500" />
+      </motion.div>
 
       {/* Pending reports alert */}
       {(stats?.field_reports.pending_review ?? 0) > 0 && (
@@ -300,6 +343,7 @@ export default function DashboardPage() {
           </p>
         </motion.div>
       )}
+
     </motion.div>
   )
 }
