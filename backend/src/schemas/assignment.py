@@ -45,6 +45,7 @@ class AssignmentResponse(BaseModel):
     completed_at: Optional[datetime] = None
     feedback: Optional[str] = None
     rating: Optional[int] = None
+    hours_spent: Optional[int] = None
 
     class Config:
         from_attributes = True

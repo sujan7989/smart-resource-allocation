@@ -19,17 +19,44 @@ interface AuthState {
   logout: () => void
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: (() => {
-    try {
-      const u = localStorage.getItem('user')
-      return u ? JSON.parse(u) : null
-    } catch {
-      return null
+/** Check if a JWT token is expired without verifying the signature. */
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    // exp is in seconds; Date.now() is in milliseconds
+    return payload.exp * 1000 < Date.now()
+  } catch {
+    return true // malformed token — treat as expired
+  }
+}
+
+function loadInitialAuth(): { user: User | null; token: string | null; isAuthenticated: boolean } {
+  try {
+    const token = localStorage.getItem('token')
+    const userStr = localStorage.getItem('user')
+
+    if (!token || !userStr) {
+      return { user: null, token: null, isAuthenticated: false }
     }
-  })(),
-  token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'),
+
+    // Clear expired tokens on app load — prevents stale auth state
+    if (isTokenExpired(token)) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      return { user: null, token: null, isAuthenticated: false }
+    }
+
+    const user: User = JSON.parse(userStr)
+    return { user, token, isAuthenticated: true }
+  } catch {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    return { user: null, token: null, isAuthenticated: false }
+  }
+}
+
+export const useAuthStore = create<AuthState>((set) => ({
+  ...loadInitialAuth(),
 
   setAuth: (user, token) => {
     localStorage.setItem('token', token)

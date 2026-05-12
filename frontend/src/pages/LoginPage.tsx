@@ -165,6 +165,8 @@ export default function LoginPage() {
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
+                    aria-label="Email address"
+                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -180,6 +182,8 @@ export default function LoginPage() {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required
+                    aria-label="Password"
+                    autoComplete="current-password"
                   />
                 </div>
               </div>

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 from src.database import get_db
@@ -19,6 +19,8 @@ router = APIRouter(prefix="/api/field-reports", tags=["Field Reports"])
 
 @router.get("/", response_model=List[FieldReportResponse])
 def list_reports(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -26,6 +28,8 @@ def list_reports(
         return (
             db.query(FieldReport)
             .order_by(FieldReport.created_at.desc())
+            .offset(skip)
+            .limit(limit)
             .all()
         )
     # Non-admins see only their own reports
@@ -33,6 +37,8 @@ def list_reports(
         db.query(FieldReport)
         .filter(FieldReport.submitted_by_id == current_user.id)
         .order_by(FieldReport.created_at.desc())
+        .offset(skip)
+        .limit(limit)
         .all()
     )
 

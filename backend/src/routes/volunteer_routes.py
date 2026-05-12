@@ -87,7 +87,7 @@ def update_my_profile(
     return profile
 
 
-@router.get("/me/recommended-tasks")
+@router.get("/me/recommended-tasks", response_model=List[dict])
 def get_recommended_tasks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)

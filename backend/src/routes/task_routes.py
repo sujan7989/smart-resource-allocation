@@ -87,7 +87,7 @@ def delete_task(
     db.commit()
 
 
-@router.get("/{task_id}/recommended-volunteers")
+@router.get("/{task_id}/recommended-volunteers", response_model=List[dict])
 def get_recommended_volunteers(
     task_id: str,
     limit: int = Query(10, ge=1, le=50),
