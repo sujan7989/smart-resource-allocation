@@ -1,51 +1,55 @@
 # Smart Resource Allocation
-### Data-Driven Volunteer Coordination for Social Impact
 
-A full-stack platform that centralizes scattered community needs data, prioritizes urgent local problems, and intelligently matches available volunteers to tasks using a smart scoring engine.
+**Data-Driven Volunteer Coordination for Social Impact**
+
+A full-stack platform that connects volunteers to urgent community needs using an AI-powered matching engine. Built for global NGO operations.
 
 ---
 
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
-| Backend | Python 3.11 + FastAPI |
-| Database | PostgreSQL (via SQLAlchemy) |
-| Auth | JWT (python-jose + passlib) |
-| Frontend | React 18 + TypeScript + Tailwind CSS |
+|-------|-----------|
+| Frontend | React 18 + TypeScript + Vite 5 |
+| Styling | Tailwind CSS + Framer Motion |
+| State | Zustand + Axios |
 | Charts | Recharts |
-| Deployment | Render (backend) + Vercel (frontend) |
+| PWA | vite-plugin-pwa + Workbox |
+| Backend | FastAPI + Python 3.11 |
+| ORM | SQLAlchemy 2.0 + Pydantic v2 |
+| Auth | JWT (python-jose) + bcrypt |
+| Rate Limiting | slowapi |
+| DB (dev) | SQLite |
+| DB (prod) | PostgreSQL |
+| Deploy | Vercel (frontend) + Render (backend) |
 
 ---
 
-## Project Structure
+## Features
 
-```
-smart-resource-allocation/
-├── backend/
-│   ├── src/
-│   │   ├── main.py           # FastAPI app entry point
-│   │   ├── config.py         # Settings from env vars
-│   │   ├── database.py       # SQLAlchemy engine + session
-│   │   ├── auth.py           # JWT auth + role guards
-│   │   ├── matching_engine.py # Smart volunteer-task matching
-│   │   ├── models/           # SQLAlchemy ORM models
-│   │   ├── schemas/          # Pydantic request/response schemas
-│   │   └── routes/           # FastAPI route handlers
-│   ├── seed.py               # Demo data seeder
-│   ├── requirements.txt
-│   ├── render.yaml           # Render deployment config
-│   └── Procfile
-└── frontend/
-    ├── src/
-    │   ├── App.tsx
-    │   ├── api/client.ts     # Axios instance with auth
-    │   ├── store/authStore.ts # Zustand auth state
-    │   ├── components/       # Layout, shared components
-    │   └── pages/            # Dashboard, Needs, Tasks, etc.
-    ├── vercel.json
-    └── package.json
-```
+- **Smart Matching Engine** — scores volunteers against tasks using skill match (40%), location (30%), availability (20%), experience (10%)
+- **Three roles** — Admin, Volunteer, Field Worker with full RBAC
+- **Community Needs** — create, verify, resolve, delete with urgency scoring
+- **Task Management** — full lifecycle (open → assigned → in_progress → completed)
+- **Field Reports → Community Needs** — one-click conversion workflow
+- **Assignment Approval** — admin approves/rejects volunteer applications
+- **Task Completion with Feedback** — volunteers rate tasks; ratings update volunteer profiles
+- **Live Dashboard** — charts, stats, top urgent needs, city breakdown
+- **PWA** — installable, offline-capable, service worker caching
+- **Pagination** — server-side pagination on all list pages
+- **Global** — no hardcoded country defaults
+
+---
+
+## Security
+
+- Admin self-registration is blocked at the schema level
+- Password strength enforced (8+ chars, uppercase, digit)
+- Rate limiting on auth endpoints (5/min register, 10/min login)
+- JWT with configurable expiry
+- Role-based route guards on both frontend and backend
+- Cascade deletes with proper FK constraints
+- Input validation on all fields with length limits
 
 ---
 
@@ -55,112 +59,65 @@ smart-resource-allocation/
 
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # Mac/Linux
-
-# Install dependencies
+.\venv\Scripts\activate        # Windows
+# source venv/bin/activate     # Mac/Linux
 pip install -r requirements.txt
-
-# Set up environment
-copy .env.example .env
-# Edit .env — set DATABASE_URL to your PostgreSQL connection string
-
-# Run the server
-uvicorn src.main:app --reload --port 8000
-
-# Seed demo data (optional)
-python seed.py
+cp .env.example .env           # edit SECRET_KEY and ADMIN_PASSWORD
+python seed_prod.py            # creates admin account
+uvicorn src.main:app --reload
+# API: http://localhost:8000
+# Docs: http://localhost:8000/docs
 ```
-
-API docs available at: http://localhost:8000/docs
 
 ### Frontend
 
 ```bash
 cd frontend
-
 npm install
-
-# Set up environment
-copy .env.example .env
-# For local dev, leave VITE_API_URL empty (uses Vite proxy to localhost:8000)
-
+cp .env.example .env           # set VITE_API_URL if needed
 npm run dev
+# App: http://localhost:5173
 ```
 
-Frontend at: http://localhost:5173
-
 ---
 
-## Demo Accounts
+## Environment Variables
 
-| Role | Email | Password |
-|---|---|---|
-| Admin | admin@smartalloc.org | Admin@123 |
-| Volunteer | priya@volunteer.org | Volunteer@123 |
-| Volunteer | rahul@volunteer.org | Volunteer@123 |
-| Field Worker | field@ngo.org | Field@123 |
+### Backend (`.env`)
 
----
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | No | SQLite default; set PostgreSQL URL for prod |
+| `SECRET_KEY` | **Yes (prod)** | JWT signing key — generate with `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `FRONTEND_URL` | Yes | Your Vercel URL for CORS |
+| `ADMIN_EMAIL` | No | Admin seed email (default: admin@smartalloc.org) |
+| `ADMIN_PASSWORD` | **Yes (prod)** | Admin seed password — change before deploying |
+| `ADMIN_FULL_NAME` | No | Admin display name |
 
-## Smart Matching Engine
+### Frontend (`.env`)
 
-The matching engine scores each volunteer-task pair on 4 factors:
-
-| Factor | Weight | How it works |
-|---|---|---|
-| Skill match | 40% | Intersection of volunteer skills vs task required skills |
-| Location match | 30% | Volunteer city / preferred areas vs task city |
-| Availability | 20% | Is the volunteer currently available? |
-| Experience | 10% | Years of experience (capped at 5 years = 100%) |
-
-Admins can view top-matched volunteers for any task. Volunteers see their personalized recommended tasks.
+| Variable | Description |
+|----------|-------------|
+| `VITE_API_URL` | Backend API URL (e.g. `https://your-api.onrender.com/api`) |
 
 ---
 
 ## Deployment
 
-### Backend → Render (free tier)
-
-1. Push code to GitHub
-2. Go to [render.com](https://render.com) → New Web Service
-3. Connect your repo, select `backend/` as root
-4. Set environment variables:
-   - `DATABASE_URL` — your PostgreSQL URL (Render provides free PostgreSQL)
-   - `SECRET_KEY` — any random string
-   - `FRONTEND_URL` — your Vercel URL
-5. Deploy
-
-### Frontend → Vercel (free tier)
-
-1. Go to [vercel.com](https://vercel.com) → New Project
-2. Connect your repo, set root to `frontend/`
-3. Set environment variable:
-   - `VITE_API_URL` — your Render backend URL + `/api`
-4. Deploy
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for full Render + Vercel deployment guide.
 
 ---
 
-## API Endpoints
+## API Reference
 
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | /api/auth/register | Register new user |
-| POST | /api/auth/login | Login |
-| GET | /api/needs/ | List community needs |
-| POST | /api/needs/ | Create need (admin) |
-| GET | /api/tasks/ | List tasks |
-| POST | /api/tasks/ | Create task (admin) |
-| GET | /api/tasks/{id}/recommended-volunteers | Smart match volunteers |
-| GET | /api/volunteers/me/recommended-tasks | Smart match tasks for volunteer |
-| POST | /api/assignments/ | Assign volunteer to task |
-| GET | /api/field-reports/ | List field reports |
-| POST | /api/field-reports/ | Submit field report |
-| GET | /api/dashboard/stats | Dashboard statistics |
-| GET | /api/dashboard/needs-by-category | Chart data |
-| GET | /api/dashboard/top-urgent-needs | Priority needs |
+Full interactive docs available at `/docs` (Swagger UI) and `/redoc` when the backend is running.
 
-Full interactive docs: `<your-backend-url>/docs`
+Key endpoints:
+- `POST /api/auth/register` — public registration (volunteer/field_worker only)
+- `POST /api/auth/login` — returns JWT
+- `GET /api/dashboard/stats` — live platform statistics
+- `GET /api/volunteers/me/recommended-tasks` — AI-matched tasks for current volunteer
+- `GET /api/tasks/{id}/recommended-volunteers` — AI-matched volunteers for a task (admin)
+- `POST /api/field-reports/{id}/convert` — convert field report to community need (admin)
+- `GET /api/assignments/pending-count` — lightweight pending count for sidebar badge (admin)

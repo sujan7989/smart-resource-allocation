@@ -5,10 +5,11 @@ import {
   LayoutDashboard, AlertTriangle, CheckSquare, Users,
   FileText, User, LogOut, Menu, Shield
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import clsx from 'clsx'
 import Logo from './Logo'
 import AnimatedBackground from './AnimatedBackground'
+import api from '../api/client'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'volunteer', 'field_worker'], color: 'text-blue-400' },
@@ -31,6 +32,20 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
+
+  // Poll for pending assignments (admin only) — uses lightweight count endpoint
+  useEffect(() => {
+    if (user?.role !== 'admin') return
+    const fetchPending = () => {
+      api.get('/assignments/pending-count')
+        .then(r => setPendingCount(r.data.count ?? 0))
+        .catch(() => {})
+    }
+    fetchPending()
+    const interval = setInterval(fetchPending, 30000) // every 30s
+    return () => clearInterval(interval)
+  }, [user])
 
   const handleLogout = () => {
     logout()
@@ -114,6 +129,12 @@ export default function Layout() {
                       layoutId="activeIndicator"
                       className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400"
                     />
+                  )}
+                  {/* Pending badge for User Management */}
+                  {to === '/admin' && pendingCount > 0 && !isActive && (
+                    <span className="ml-auto bg-amber-500 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                      {pendingCount}
+                    </span>
                   )}
                 </motion.div>
               </NavLink>

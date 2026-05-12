@@ -1,24 +1,30 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from src.database import get_db
 from src.models.user import User
 from src.schemas.user import UserCreate, UserLogin, Token, UserResponse
 from src.auth import verify_password, get_password_hash, create_access_token
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    # Check if user exists
+@limiter.limit("5/minute")
+def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
+    """
+    Public registration. Only volunteer and field_worker roles are allowed.
+    Admin accounts must be created by an existing admin via /api/users/.
+    """
     existing = db.query(User).filter(User.email == user_data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    # Create user
     new_user = User(
         email=user_data.email,
-        full_name=user_data.full_name,
+        full_name=user_data.full_name.strip(),
         hashed_password=get_password_hash(user_data.password),
         role=user_data.role,
         phone=user_data.phone,
@@ -28,32 +34,30 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
 
-    # Generate token
     access_token = create_access_token(data={"sub": new_user.id, "role": new_user.role.value})
-
     return Token(
         access_token=access_token,
         token_type="bearer",
-        user=UserResponse.from_orm(new_user)
+        user=UserResponse.from_orm(new_user),
     )
 
 
 @router.post("/login", response_model=Token)
-def login(credentials: UserLogin, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, credentials: UserLogin, db: Session = Depends(get_db)):
+    """Login with email and password. Returns a JWT access token."""
     user = db.query(User).filter(User.email == credentials.email).first()
     if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password"
+            detail="Incorrect email or password",
         )
-
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="Account is inactive")
+        raise HTTPException(status_code=403, detail="Account is inactive. Contact your administrator.")
 
     access_token = create_access_token(data={"sub": user.id, "role": user.role.value})
-
     return Token(
         access_token=access_token,
         token_type="bearer",
-        user=UserResponse.from_orm(user)
+        user=UserResponse.from_orm(user),
     )

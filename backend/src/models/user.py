@@ -23,10 +23,10 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     phone = Column(String, nullable=True)
     location = Column(String, nullable=True)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
-    volunteer_profile = relationship("VolunteerProfile", back_populates="user", uselist=False)
+    volunteer_profile = relationship("VolunteerProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     field_reports = relationship("FieldReport", back_populates="submitted_by")
     assignments = relationship("Assignment", back_populates="volunteer")

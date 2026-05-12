@@ -36,7 +36,7 @@ def create_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin)
 ):
-    task = Task(**task_data.model_dump())
+    task = Task(**{k: v.strip() if isinstance(v, str) else v for k, v in task_data.model_dump().items()})
     db.add(task)
     db.commit()
     db.refresh(task)

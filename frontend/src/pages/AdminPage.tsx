@@ -11,10 +11,16 @@ interface UserItem {
 }
 
 interface Assignment {
-  id: string; task_id: string; volunteer_id: string
-  status: string; match_score: number; assigned_at: string
-  volunteer?: { full_name: string; email: string }
-  task?: { title: string; city: string }
+  id: string
+  task_id: string
+  volunteer_id: string
+  status: string
+  match_score: number
+  assigned_at: string
+  task_title?: string
+  task_city?: string
+  volunteer_name?: string
+  volunteer_email?: string
 }
 
 const roleColors: Record<string, string> = {
@@ -154,8 +160,11 @@ export default function AdminPage() {
               return (
                 <div key={a.id} className="flex items-center justify-between bg-slate-800/50 rounded-xl p-3">
                   <div>
-                    <p className="text-sm font-medium text-white">{vol?.full_name || 'Volunteer'}</p>
-                    <p className="text-xs text-slate-500">Task #{a.task_id.slice(0, 8)} · Match: <span className="text-blue-400 font-semibold">{a.match_score}%</span></p>
+                    <p className="text-sm font-medium text-white">{a.volunteer_name || 'Volunteer'}</p>
+                    <p className="text-xs text-slate-500">
+                      {a.task_title ? <span className="text-slate-300">{a.task_title}</span> : `Task #${a.task_id.slice(0, 8)}`}
+                      {' · '}Match: <span className="text-blue-400 font-semibold">{a.match_score}%</span>
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     <motion.button

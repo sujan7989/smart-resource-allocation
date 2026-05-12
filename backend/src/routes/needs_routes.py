@@ -17,10 +17,11 @@ def list_needs(
     urgency: Optional[UrgencyLevel] = None,
     city: Optional[str] = None,
     category: Optional[str] = None,
+    search: Optional[str] = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     query = db.query(CommunityNeed)
     if status:
@@ -31,15 +32,23 @@ def list_needs(
         query = query.filter(CommunityNeed.city.ilike(f"%{city}%"))
     if category:
         query = query.filter(CommunityNeed.category == category)
+    if search:
+        query = query.filter(
+            CommunityNeed.title.ilike(f"%{search}%")
+            | CommunityNeed.city.ilike(f"%{search}%")
+            | CommunityNeed.description.ilike(f"%{search}%")
+        )
 
-    return query.order_by(CommunityNeed.urgency_score.desc()).offset(skip).limit(limit).all()
+    total = query.count()
+    results = query.order_by(CommunityNeed.urgency_score.desc()).offset(skip).limit(limit).all()
+    return results
 
 
 @router.post("/", response_model=CommunityNeedResponse, status_code=201)
 def create_need(
     need_data: CommunityNeedCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_admin),
 ):
     urgency_score = compute_urgency_score(need_data.affected_people, need_data.urgency.value)
     need = CommunityNeed(**need_data.model_dump(), urgency_score=urgency_score)
@@ -53,7 +62,7 @@ def create_need(
 def get_need(
     need_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     need = db.query(CommunityNeed).filter(CommunityNeed.id == need_id).first()
     if not need:
@@ -66,7 +75,7 @@ def update_need(
     need_id: str,
     updates: CommunityNeedUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_admin),
 ):
     need = db.query(CommunityNeed).filter(CommunityNeed.id == need_id).first()
     if not need:
@@ -88,7 +97,7 @@ def update_need(
 def delete_need(
     need_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_admin),
 ):
     need = db.query(CommunityNeed).filter(CommunityNeed.id == need_id).first()
     if not need:

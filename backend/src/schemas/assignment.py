@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
 from src.models.assignment import AssignmentStatus
@@ -16,6 +16,13 @@ class AssignmentUpdate(BaseModel):
     feedback: Optional[str] = None
     rating: Optional[int] = None
 
+    @field_validator("rating")
+    @classmethod
+    def validate_rating(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and not (1 <= v <= 5):
+            raise ValueError("Rating must be between 1 and 5")
+        return v
+
 
 class AssignmentResponse(BaseModel):
     id: str
@@ -28,6 +35,27 @@ class AssignmentResponse(BaseModel):
     completed_at: Optional[datetime] = None
     feedback: Optional[str] = None
     rating: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AssignmentDetail(BaseModel):
+    """Extended assignment response with denormalized task and volunteer info."""
+    id: str
+    task_id: str
+    volunteer_id: str
+    status: str
+    match_score: int
+    notes: Optional[str] = None
+    assigned_at: datetime
+    completed_at: Optional[datetime] = None
+    feedback: Optional[str] = None
+    rating: Optional[int] = None
+    task_title: Optional[str] = None
+    task_city: Optional[str] = None
+    volunteer_name: Optional[str] = None
+    volunteer_email: Optional[str] = None
 
     class Config:
         from_attributes = True

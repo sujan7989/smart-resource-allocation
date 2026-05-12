@@ -48,7 +48,7 @@ class CommunityNeed(Base):
     area = Column(String, nullable=False)
     city = Column(String, nullable=False)
     state = Column(String, nullable=True)
-    country = Column(String, nullable=False, default="India")
+    country = Column(String, nullable=False, default="")
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
 
@@ -59,9 +59,9 @@ class CommunityNeed(Base):
     # Meta
     reported_by_org = Column(String, nullable=True)
     is_verified = Column(Boolean, default=False)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
-    tasks = relationship("Task", back_populates="community_need")
+    tasks = relationship("Task", back_populates="community_need", cascade="all, delete-orphan")
     field_reports = relationship("FieldReport", back_populates="community_need")

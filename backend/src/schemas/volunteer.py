@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -11,6 +11,29 @@ class VolunteerProfileCreate(BaseModel):
     bio: Optional[str] = None
     is_available: bool = True
 
+    @field_validator("experience_years")
+    @classmethod
+    def validate_experience(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("Experience years cannot be negative")
+        if v > 60:
+            raise ValueError("Experience years cannot exceed 60")
+        return v
+
+    @field_validator("skills")
+    @classmethod
+    def validate_skills(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and len(v) > 500:
+            raise ValueError("Skills string too long (max 500 characters)")
+        return v
+
+    @field_validator("bio")
+    @classmethod
+    def validate_bio(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and len(v) > 1000:
+            raise ValueError("Bio must be at most 1000 characters")
+        return v
+
 
 class VolunteerProfileUpdate(BaseModel):
     skills: Optional[str] = None
@@ -19,6 +42,30 @@ class VolunteerProfileUpdate(BaseModel):
     experience_years: Optional[int] = None
     bio: Optional[str] = None
     is_available: Optional[bool] = None
+
+    @field_validator("experience_years")
+    @classmethod
+    def validate_experience(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None:
+            if v < 0:
+                raise ValueError("Experience years cannot be negative")
+            if v > 60:
+                raise ValueError("Experience years cannot exceed 60")
+        return v
+
+    @field_validator("skills")
+    @classmethod
+    def validate_skills(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and len(v) > 500:
+            raise ValueError("Skills string too long (max 500 characters)")
+        return v
+
+    @field_validator("bio")
+    @classmethod
+    def validate_bio(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and len(v) > 1000:
+            raise ValueError("Bio must be at most 1000 characters")
+        return v
 
 
 class VolunteerProfileResponse(BaseModel):
@@ -33,6 +80,7 @@ class VolunteerProfileResponse(BaseModel):
     total_tasks_completed: int
     rating: int
     created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

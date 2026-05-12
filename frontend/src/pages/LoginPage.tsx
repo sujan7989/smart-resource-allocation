@@ -49,9 +49,9 @@ export default function LoginPage() {
 
   const stats = liveStats
     ? [
-        [liveStats.people.toLocaleString(), 'People Helped'],
-        [String(liveStats.needs), 'Active Needs'],
-        [String(liveStats.volunteers), 'Volunteers Ready'],
+        [liveStats.people.toLocaleString(), 'People Helped'] as [string, string],
+        [String(liveStats.needs), 'Active Needs'] as [string, string],
+        [String(liveStats.volunteers), 'Volunteers Ready'] as [string, string],
       ]
     : null
 
@@ -116,7 +116,7 @@ export default function LoginPage() {
           transition={{ delay: 1, duration: 0.7 }}
           className="flex gap-8"
         >
-          {stats ? (
+          {stats && (stats[0][0] !== '0' || stats[1][0] !== '0' || stats[2][0] !== '0') ? (
             stats.map(([val, label]) => (
               <div key={label}>
                 <p className="text-2xl font-bold text-gradient">{val}</p>
@@ -124,14 +124,9 @@ export default function LoginPage() {
               </div>
             ))
           ) : (
-            // Loading state — no fake numbers shown
-            <div className="flex gap-8">
-              {['People Helped', 'Active Needs', 'Volunteers Ready'].map(label => (
-                <div key={label}>
-                  <div className="h-7 w-12 bg-slate-800 rounded animate-pulse mb-1" />
-                  <p className="text-slate-500 text-xs">{label}</p>
-                </div>
-              ))}
+            <div className="glass px-4 py-3 rounded-xl">
+              <p className="text-sm text-slate-300 font-medium">Empowering NGOs globally</p>
+              <p className="text-xs text-slate-500 mt-0.5">Real-time data updates as your team works</p>
             </div>
           )}
         </motion.div>
