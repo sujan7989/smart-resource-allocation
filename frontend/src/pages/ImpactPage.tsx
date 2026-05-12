@@ -1,23 +1,30 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Bar, Cell,
+  ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
+  CartesianGrid, Tooltip, AreaChart, Area,
 } from 'recharts'
 import { useTranslation } from 'react-i18next'
 import api from '../api/client'
 import toast from 'react-hot-toast'
-import {
-  TrendingUp, Users, CheckSquare, Heart, Star,
-  Download, Award, Clock,
-} from 'lucide-react'
+import { TrendingUp, Users, CheckSquare, Heart, Star, Download, Award } from 'lucide-react'
 
-interface Stats {
-  needs: { total: number; open: number; critical: number; total_affected_people: number }
-  volunteers: { total: number; available: number }
-  tasks: { total: number; open: number; completed: number }
-  assignments: { total: number; active: number }
-  field_reports: { pending_review: number }
+interface ImpactData {
+  total_volunteer_hours: number
+  resolved_needs: number
+  completed_tasks: number
+  people_helped: number
+  top_volunteers: {
+    name: string
+    tasks_completed: number
+    hours_contributed: number
+    rating: number
+  }[]
+  monthly_resolved: {
+    month: string
+    year: number
+    resolved: number
+  }[]
 }
 
 interface TopVolunteer {
@@ -30,6 +37,7 @@ interface TopVolunteer {
     rating: number
     skills?: string
     experience_years: number
+    total_hours_contributed: number
   }
 }
 
@@ -54,20 +62,19 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function ImpactPage() {
   const { t } = useTranslation()
-  const [stats, setStats] = useState<Stats | null>(null)
+  const [impact, setImpact] = useState<ImpactData | null>(null)
   const [topVolunteers, setTopVolunteers] = useState<TopVolunteer[]>([])
   const [byCategory, setByCategory] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
-      api.get('/dashboard/stats'),
+      api.get('/dashboard/impact'),
       api.get('/volunteers/', { params: { available_only: false } }),
       api.get('/dashboard/needs-by-category'),
     ])
-      .then(([statsRes, volRes, catRes]) => {
-        setStats(statsRes.data)
-        // Sort volunteers by tasks completed
+      .then(([impactRes, volRes, catRes]) => {
+        setImpact(impactRes.data)
         const sorted = [...volRes.data]
           .filter((v: TopVolunteer) => v.profile && v.profile.total_tasks_completed > 0)
           .sort((a: TopVolunteer, b: TopVolunteer) =>
@@ -84,43 +91,21 @@ export default function ImpactPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Build a simple "activity" chart from stats
-  const activityData = stats
-    ? [
-        { name: 'Needs',       total: stats.needs.total,       resolved: stats.needs.total - stats.needs.open },
-        { name: 'Tasks',       total: stats.tasks.total,       resolved: stats.tasks.completed },
-        { name: 'Assignments', total: stats.assignments.total, resolved: stats.assignments.active },
-      ]
-    : []
-
   const exportCSV = () => {
-    if (!stats) return
-    const rows = [
+    if (!impact) return
+    const rows: (string | number)[][] = [
       ['Metric', 'Value'],
-      ['Total Needs', stats.needs.total],
-      ['Open Needs', stats.needs.open],
-      ['Critical Needs', stats.needs.critical],
-      ['People Affected', stats.needs.total_affected_people],
-      ['Total Volunteers', stats.volunteers.total],
-      ['Available Volunteers', stats.volunteers.available],
-      ['Total Tasks', stats.tasks.total],
-      ['Completed Tasks', stats.tasks.completed],
-      ['Total Assignments', stats.assignments.total],
-      ['Active Assignments', stats.assignments.active],
-      ['Pending Field Reports', stats.field_reports.pending_review],
+      ['Resolved Needs', impact.resolved_needs],
+      ['Completed Tasks', impact.completed_tasks],
+      ['Total Volunteer Hours', impact.total_volunteer_hours],
+      ['People Helped', impact.people_helped],
       [],
-      ['Top Volunteers by Tasks Completed'],
-      ['Name', 'Email', 'Location', 'Tasks Completed', 'Rating', 'Experience (yrs)'],
-      ...topVolunteers.map(v => [
-        v.full_name,
-        v.email,
-        v.location ?? '',
-        v.profile?.total_tasks_completed ?? 0,
-        v.profile?.rating ?? 0,
-        v.profile?.experience_years ?? 0,
+      ['Top Volunteers'],
+      ['Name', 'Tasks Completed', 'Hours Contributed', 'Rating'],
+      ...impact.top_volunteers.map(v => [
+        v.name, v.tasks_completed, v.hours_contributed, v.rating,
       ]),
     ]
-
     const csv = rows.map(r => r.join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -142,8 +127,8 @@ export default function ImpactPage() {
     {
       icon: Heart,
       label: t('impact.needsResolved'),
-      value: (stats?.needs.total ?? 0) - (stats?.needs.open ?? 0),
-      sub: `${stats?.needs.total ?? 0} total needs`,
+      value: impact?.resolved_needs ?? 0,
+      sub: 'needs fully resolved',
       color: 'from-red-500 to-rose-500',
       bg: 'from-red-500/10 to-rose-500/10',
       border: 'border-red-500/20',
@@ -151,31 +136,37 @@ export default function ImpactPage() {
     {
       icon: CheckSquare,
       label: t('impact.tasksCompleted'),
-      value: stats?.tasks.completed ?? 0,
-      sub: `${stats?.tasks.total ?? 0} total tasks`,
+      value: impact?.completed_tasks ?? 0,
+      sub: 'volunteer tasks done',
       color: 'from-green-500 to-emerald-500',
       bg: 'from-green-500/10 to-emerald-500/10',
       border: 'border-green-500/20',
     },
     {
       icon: Users,
-      label: t('impact.volunteersDeployed'),
-      value: stats?.assignments.total ?? 0,
-      sub: `${stats?.volunteers.total ?? 0} registered`,
-      color: 'from-blue-500 to-cyan-500',
-      bg: 'from-blue-500/10 to-cyan-500/10',
-      border: 'border-blue-500/20',
+      label: t('impact.totalVolunteerHours'),
+      value: impact?.total_volunteer_hours ?? 0,
+      sub: 'hours contributed',
+      color: 'from-orange-500 to-amber-500',
+      bg: 'from-orange-500/10 to-amber-500/10',
+      border: 'border-orange-500/20',
     },
     {
       icon: TrendingUp,
-      label: 'People Reached',
-      value: stats?.needs.total_affected_people ?? 0,
-      sub: 'across all needs',
+      label: 'People Helped',
+      value: impact?.people_helped ?? 0,
+      sub: 'from resolved needs',
       color: 'from-purple-500 to-indigo-500',
       bg: 'from-purple-500/10 to-indigo-500/10',
       border: 'border-purple-500/20',
     },
   ]
+
+  // Monthly resolved chart data
+  const monthlyData = impact?.monthly_resolved.map(m => ({
+    name: `${m.month} ${m.year !== new Date().getFullYear() ? m.year : ''}`.trim(),
+    resolved: m.resolved,
+  })) ?? []
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
@@ -199,7 +190,7 @@ export default function ImpactPage() {
 
       {/* Impact stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {impactCards.map((card, i) => (
+        {impactCards.map(card => (
           <motion.div
             key={card.label}
             variants={item}
@@ -210,9 +201,7 @@ export default function ImpactPage() {
             <div className={`inline-flex p-2.5 rounded-xl bg-gradient-to-br ${card.color} shadow-lg mb-3`}>
               <card.icon size={18} className="text-white" />
             </div>
-            <p className="text-3xl font-bold text-white stat-number">
-              {card.value.toLocaleString()}
-            </p>
+            <p className="text-3xl font-bold text-white stat-number">{card.value.toLocaleString()}</p>
             <p className="text-sm font-semibold text-white/80 mt-0.5">{card.label}</p>
             <p className="text-xs text-slate-500 mt-0.5">{card.sub}</p>
           </motion.div>
@@ -221,19 +210,31 @@ export default function ImpactPage() {
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Activity overview */}
+        {/* Monthly resolved needs */}
         <motion.div variants={item} className="card">
-          <h2 className="font-semibold text-white mb-1">Platform Activity</h2>
-          <p className="text-xs text-slate-500 mb-4">Total vs resolved across all categories</p>
+          <h2 className="font-semibold text-white mb-1">Needs Resolved per Month</h2>
+          <p className="text-xs text-slate-500 mb-4">Last 6 months of resolved community needs</p>
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={activityData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+            <AreaChart data={monthlyData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+              <defs>
+                <linearGradient id="resolvedGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#64748b' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="total" name="Total" fill="#3b82f6" radius={[4, 4, 0, 0]} opacity={0.4} />
-              <Bar dataKey="resolved" name="Resolved/Active" fill="#22c55e" radius={[4, 4, 0, 0]} />
-            </BarChart>
+              <Area
+                type="monotone"
+                dataKey="resolved"
+                name="Resolved"
+                stroke="#22c55e"
+                strokeWidth={2}
+                fill="url(#resolvedGrad)"
+              />
+            </AreaChart>
           </ResponsiveContainer>
         </motion.div>
 
@@ -277,12 +278,12 @@ export default function ImpactPage() {
                 transition={{ delay: i * 0.05 }}
                 className="flex items-center gap-4 p-3 rounded-xl bg-slate-800/50 border border-white/5 hover:border-white/10 transition-all"
               >
-                {/* Rank */}
+                {/* Rank medal */}
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${
                   i === 0 ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
                   i === 1 ? 'bg-slate-400/20 text-slate-300 border border-slate-400/30' :
                   i === 2 ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' :
-                  'bg-slate-800 text-slate-500 border border-white/5'
+                            'bg-slate-800 text-slate-500 border border-white/5'
                 }`}>
                   {i + 1}
                 </div>
@@ -312,14 +313,14 @@ export default function ImpactPage() {
                     <p className="text-xs text-slate-500">tasks</p>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-yellow-400 flex items-center gap-1">
-                      <Star size={12} /> {vol.profile?.rating ?? 0}
-                    </p>
-                    <p className="text-xs text-slate-500">rating</p>
+                    <p className="text-sm font-bold text-orange-400">{vol.profile?.total_hours_contributed ?? 0}h</p>
+                    <p className="text-xs text-slate-500">hours</p>
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-300">{vol.profile?.experience_years ?? 0}y</p>
-                    <p className="text-xs text-slate-500">exp</p>
+                    <p className="text-sm font-bold text-yellow-400 flex items-center gap-1">
+                      <Star size={12} /> {(vol.profile?.rating ?? 0).toFixed(1)}
+                    </p>
+                    <p className="text-xs text-slate-500">rating</p>
                   </div>
                 </div>
               </motion.div>

@@ -8,13 +8,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: 'Smart Resource Allocation',
         short_name: 'SmartAlloc',
         description: 'Data-Driven Volunteer Coordination for Social Impact',
         theme_color: '#1d4ed8',
-        background_color: '#1e3a8a',
+        background_color: '#020617',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
@@ -42,23 +42,8 @@ export default defineConfig({
             type: 'image/png',
             purpose: 'maskable'
           }
-        ],
-        screenshots: [
-          {
-            src: 'screenshot-wide.png',
-            sizes: '1280x720',
-            type: 'image/png',
-            form_factor: 'wide',
-            label: 'Dashboard - Smart Resource Allocation'
-          },
-          {
-            src: 'screenshot-mobile.png',
-            sizes: '390x844',
-            type: 'image/png',
-            form_factor: 'narrow',
-            label: 'Mobile View - Smart Resource Allocation'
-          }
         ]
+        // Note: screenshots removed — add real screenshot files to public/ before adding them back
       },
       workbox: {
         // Cache all static assets

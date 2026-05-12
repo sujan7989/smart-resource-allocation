@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Integer, Text, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, Float, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
@@ -18,7 +18,7 @@ class VolunteerProfile(Base):
     is_available = Column(Boolean, default=True)
     total_tasks_completed = Column(Integer, default=0)
     total_hours_contributed = Column(Integer, default=0)  # cumulative volunteer hours
-    rating = Column(Integer, default=0)            # 0-5 average rating
+    rating = Column(Float, default=0.0)            # 0.0–5.0 running average rating
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 

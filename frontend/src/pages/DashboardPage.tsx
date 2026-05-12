@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/client'
+import toast from 'react-hot-toast'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
@@ -27,17 +28,18 @@ const item = {
 
 function AnimatedNumber({ value }: { value: number }) {
   const [display, setDisplay] = useState(0)
-  const started = useRef(false)
+  const prevValue = useRef(0)
   useEffect(() => {
-    if (started.current) return
-    started.current = true
-    const duration = 1200
+    const from = prevValue.current
+    prevValue.current = value
+    if (from === value) return
+    const duration = 1000
     const start = Date.now()
     const tick = () => {
       const elapsed = Date.now() - start
       const progress = Math.min(elapsed / duration, 1)
       const eased = 1 - Math.pow(1 - progress, 3)
-      setDisplay(Math.floor(eased * value))
+      setDisplay(Math.round(from + (value - from) * eased))
       if (progress < 1) requestAnimationFrame(tick)
     }
     requestAnimationFrame(tick)
@@ -74,6 +76,8 @@ export default function DashboardPage() {
   const [byCity, setByCity] = useState<any[]>([])
   const [topNeeds, setTopNeeds] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [error, setError] = useState(false)
   const { permission, supported, requestPermission, sendLocalNotification } = usePushNotifications()
 
   const handleEnableNotifications = async () => {
@@ -84,6 +88,7 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
+    setError(false)
     Promise.all([
       api.get('/dashboard/stats'),
       api.get('/dashboard/needs-by-category'),
@@ -96,6 +101,10 @@ export default function DashboardPage() {
       setByUrgency(urg.data)
       setByCity(city.data)
       setTopNeeds(top.data)
+      setLastUpdated(new Date())
+    }).catch(() => {
+      setError(true)
+      toast.error('Failed to load dashboard data')
     }).finally(() => setLoading(false))
   }, [])
 
@@ -106,6 +115,16 @@ export default function DashboardPage() {
         <div className="absolute inset-2 rounded-full border-2 border-purple-500/20 border-b-purple-500 animate-spin"
           style={{ animationDirection: 'reverse', animationDuration: '0.8s' }} />
       </div>
+    </div>
+  )
+
+  if (error || !stats) return (
+    <div className="flex flex-col items-center justify-center h-64 gap-4">
+      <AlertTriangle size={40} className="text-red-400" />
+      <p className="text-slate-400">Failed to load dashboard. Check your connection.</p>
+      <button onClick={() => window.location.reload()} className="btn-secondary text-sm">
+        Retry
+      </button>
     </div>
   )
 
@@ -158,7 +177,7 @@ export default function DashboardPage() {
           </h1>
           <p className="text-slate-400 text-sm mt-1 flex items-center gap-2">
             <Activity size={14} className="text-green-400 animate-pulse" />
-            Live overview · Updated just now
+            Live overview · {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Loading...'}
           </p>
         </div>
         {supported && permission === 'default' && (

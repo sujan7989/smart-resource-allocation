@@ -58,7 +58,8 @@ export default function NeedsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [form, setForm] = useState({
     title: '', description: '', category: 'food', urgency: 'medium',
-    area: '', city: '', state: '', country: '', affected_people: 0, reported_by_org: '',
+    area: '', city: '', state: '', country: '', affected_people: 0,
+    reported_by_org: '', latitude: '', longitude: '',
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -89,9 +90,10 @@ export default function NeedsPage() {
     fetchNeeds(0)
   }, [filterUrgency, filterCategory, search])
 
+  // Only run on explicit page changes (not on filter changes — those reset to page 0 above)
   useEffect(() => {
-    fetchNeeds(page)
-  }, [page])
+    if (page > 0) fetchNeeds(page)
+  }, [page, fetchNeeds])
 
   // Debounce search input
   useEffect(() => {
@@ -103,12 +105,18 @@ export default function NeedsPage() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await api.post('/needs/', form)
+      await api.post('/needs/', {
+        ...form,
+        state: form.state || undefined,
+        latitude: form.latitude ? parseFloat(form.latitude) : undefined,
+        longitude: form.longitude ? parseFloat(form.longitude) : undefined,
+      })
       toast.success('Community need created!')
       setShowForm(false)
       setForm({
         title: '', description: '', category: 'food', urgency: 'medium',
-        area: '', city: '', state: '', country: '', affected_people: 0, reported_by_org: '',
+        area: '', city: '', state: '', country: '', affected_people: 0,
+        reported_by_org: '', latitude: '', longitude: '',
       })
       fetchNeeds(0)
     } catch (err: any) {
@@ -326,6 +334,32 @@ export default function NeedsPage() {
                   value={form.reported_by_org}
                   onChange={e => setForm(f => ({ ...f, reported_by_org: e.target.value }))}
                   placeholder="NGO name"
+                />
+              </div>
+              <div>
+                <label className="input-label">Latitude <span className="text-slate-600">(optional — for map)</span></label>
+                <input
+                  type="number"
+                  step="any"
+                  className="input"
+                  value={form.latitude}
+                  onChange={e => setForm(f => ({ ...f, latitude: e.target.value }))}
+                  placeholder="e.g. 19.076"
+                  min={-90}
+                  max={90}
+                />
+              </div>
+              <div>
+                <label className="input-label">Longitude <span className="text-slate-600">(optional — for map)</span></label>
+                <input
+                  type="number"
+                  step="any"
+                  className="input"
+                  value={form.longitude}
+                  onChange={e => setForm(f => ({ ...f, longitude: e.target.value }))}
+                  placeholder="e.g. 72.877"
+                  min={-180}
+                  max={180}
                 />
               </div>
               <div className="md:col-span-2 flex gap-3 justify-end pt-2">

@@ -1,22 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from src.database import get_db
 from src.models.user import User
 from src.schemas.user import UserCreate, UserLogin, Token, UserResponse
 from src.auth import verify_password, get_password_hash, create_access_token
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
-limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-@limiter.limit("5/minute")
 def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
     """
     Public registration. Only volunteer and field_worker roles are allowed.
     Admin accounts must be created by an existing admin via /api/users/.
+    Rate limited: 5 requests/minute per IP (enforced by app.state.limiter in main.py).
     """
     existing = db.query(User).filter(User.email == user_data.email).first()
     if existing:
@@ -43,9 +40,11 @@ def register(request: Request, user_data: UserCreate, db: Session = Depends(get_
 
 
 @router.post("/login", response_model=Token)
-@limiter.limit("10/minute")
 def login(request: Request, credentials: UserLogin, db: Session = Depends(get_db)):
-    """Login with email and password. Returns a JWT access token."""
+    """
+    Login with email and password. Returns a JWT access token.
+    Rate limited: 10 requests/minute per IP (enforced by app.state.limiter in main.py).
+    """
     user = db.query(User).filter(User.email == credentials.email).first()
     if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(

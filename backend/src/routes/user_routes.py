@@ -28,7 +28,7 @@ def update_me(
     return current_user
 
 
-@router.post("/me/change-password")
+@router.post("/me/change-password", response_model=dict)
 def change_password(
     data: PasswordChange,
     db: Session = Depends(get_db),
@@ -106,6 +106,10 @@ def admin_update_user(
     # Prevent admin from deactivating themselves
     if user.id == current_user.id and updates.is_active is False:
         raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+
+    # Prevent admin from demoting themselves (would leave zero admins)
+    if user.id == current_user.id and updates.role is not None and updates.role != UserRole.ADMIN:
+        raise HTTPException(status_code=400, detail="Cannot change your own role. Ask another admin.")
 
     # Enforce single-admin rule when promoting someone to admin
     if updates.role == UserRole.ADMIN and user.role != UserRole.ADMIN:

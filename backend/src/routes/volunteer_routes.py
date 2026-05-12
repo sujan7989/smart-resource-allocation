@@ -16,25 +16,29 @@ router = APIRouter(prefix="/api/volunteers", tags=["Volunteers"])
 def list_volunteers(
     available_only: bool = False,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin)
+    current_user: User = Depends(require_admin),
 ):
-    query = db.query(User).filter(User.role == UserRole.VOLUNTEER, User.is_active == True)
-    users = query.all()
+    # Single JOIN query — no N+1
+    query = (
+        db.query(User, VolunteerProfile)
+        .outerjoin(VolunteerProfile, VolunteerProfile.user_id == User.id)
+        .filter(User.role == UserRole.VOLUNTEER, User.is_active == True)
+    )
+    if available_only:
+        query = query.filter(VolunteerProfile.is_available == True)
 
-    result = []
-    for user in users:
-        profile = db.query(VolunteerProfile).filter(VolunteerProfile.user_id == user.id).first()
-        if available_only and (not profile or not profile.is_available):
-            continue
-        result.append(VolunteerWithUser(
+    rows = query.all()
+    return [
+        VolunteerWithUser(
             id=user.id,
             email=user.email,
             full_name=user.full_name,
             location=user.location,
             phone=user.phone,
-            profile=VolunteerProfileResponse.from_orm(profile) if profile else None
-        ))
-    return result
+            profile=VolunteerProfileResponse.from_orm(profile) if profile else None,
+        )
+        for user, profile in rows
+    ]
 
 
 @router.get("/me/profile", response_model=VolunteerProfileResponse)

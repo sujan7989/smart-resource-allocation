@@ -39,9 +39,11 @@ const URGENCY_RADIUS: Record<string, number> = {
 const FILTER_OPTIONS = ['all', 'critical', 'high', 'medium', 'low'] as const
 type Filter = typeof FILTER_OPTIONS[number]
 
-// Fit map to markers
+// Fit map to markers — re-runs when coords actually change, not just length
 function FitBounds({ coords }: { coords: [number, number][] }) {
   const map = useMap()
+  // Stringify coords to detect actual position changes
+  const coordKey = coords.map(c => c.join(',')).join('|')
   useEffect(() => {
     if (coords.length === 0) return
     if (coords.length === 1) {
@@ -50,11 +52,15 @@ function FitBounds({ coords }: { coords: [number, number][] }) {
     }
     const lats = coords.map(c => c[0])
     const lngs = coords.map(c => c[1])
-    map.fitBounds([
-      [Math.min(...lats) - 1, Math.min(...lngs) - 1],
-      [Math.max(...lats) + 1, Math.max(...lngs) + 1],
-    ], { padding: [40, 40] })
-  }, [coords.length])
+    map.fitBounds(
+      [
+        [Math.min(...lats) - 1, Math.min(...lngs) - 1],
+        [Math.max(...lats) + 1, Math.max(...lngs) + 1],
+      ],
+      { padding: [40, 40] }
+    )
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coordKey])
   return null
 }
 
@@ -68,7 +74,8 @@ export default function MapPage() {
   const [filter, setFilter] = useState<Filter>('all')
 
   useEffect(() => {
-    api.get('/needs/', { params: { limit: 100 } })
+    // Fetch all needs (up to 500) for the map — no silent truncation
+    api.get('/needs/', { params: { limit: 500 } })
       .then(r => setNeeds(r.data))
       .catch(() => toast.error('Failed to load needs'))
       .finally(() => setLoading(false))
@@ -261,7 +268,8 @@ export default function MapPage() {
 
           {needs.length > 0 && geoNeeds.length < needs.length && (
             <p className="text-xs text-slate-600 text-center px-2 pb-2">
-              {needs.length - geoNeeds.length} need{needs.length - geoNeeds.length !== 1 ? 's' : ''} without coordinates not shown
+              {needs.length - geoNeeds.length} need{needs.length - geoNeeds.length !== 1 ? 's' : ''} without coordinates —
+              add lat/lng when creating needs to show them here
             </p>
           )}
         </div>

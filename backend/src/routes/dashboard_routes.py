@@ -163,18 +163,17 @@ def get_impact_stats(
     Impact analytics: volunteer hours, resolved needs, top volunteers,
     needs resolved per month (last 6 months).
     """
-    from src.models.volunteer import VolunteerProfile
-    from src.models.assignment import Assignment, AssignmentStatus
-    from sqlalchemy import extract
-    from datetime import datetime, timezone
     import calendar
+    from datetime import datetime, timezone
+    from sqlalchemy import extract
 
     # Total volunteer hours contributed
     total_hours = db.query(func.sum(Assignment.hours_spent)).filter(
-        Assignment.status == AssignmentStatus.COMPLETED
+        Assignment.status == AssignmentStatus.COMPLETED,
+        Assignment.hours_spent.isnot(None),
     ).scalar() or 0
 
-    # Total resolved needs
+    # Total resolved needs (status == RESOLVED specifically)
     resolved_needs = db.query(CommunityNeed).filter(
         CommunityNeed.status == NeedStatus.RESOLVED
     ).count()
@@ -187,7 +186,7 @@ def get_impact_stats(
         CommunityNeed.status == NeedStatus.RESOLVED
     ).scalar() or 0
 
-    # Top 5 volunteers by tasks completed
+    # Top 5 volunteers by tasks completed — single JOIN query
     top_volunteers_raw = (
         db.query(VolunteerProfile, User)
         .join(User, VolunteerProfile.user_id == User.id)
@@ -201,7 +200,7 @@ def get_impact_stats(
             "name": u.full_name,
             "tasks_completed": p.total_tasks_completed,
             "hours_contributed": p.total_hours_contributed or 0,
-            "rating": p.rating,
+            "rating": round(p.rating, 1),
         }
         for p, u in top_volunteers_raw
     ]

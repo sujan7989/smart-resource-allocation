@@ -1,6 +1,19 @@
+import json
 from pydantic import BaseModel, field_validator
 from typing import Optional
 from datetime import datetime
+
+
+def _validate_availability_json(v: Optional[str]) -> Optional[str]:
+    """Shared validator: ensure availability is valid JSON if provided."""
+    if v is not None and v.strip():
+        try:
+            json.loads(v)
+        except (json.JSONDecodeError, ValueError):
+            raise ValueError(
+                'Availability must be valid JSON, e.g. {"days":["Saturday","Sunday"],"hours":"9am-5pm"}'
+            )
+    return v
 
 
 class VolunteerProfileCreate(BaseModel):
@@ -26,6 +39,11 @@ class VolunteerProfileCreate(BaseModel):
         if v is not None and len(v) > 500:
             raise ValueError("Skills string too long (max 500 characters)")
         return v
+
+    @field_validator("availability")
+    @classmethod
+    def validate_availability(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_availability_json(v)
 
     @field_validator("bio")
     @classmethod
@@ -60,6 +78,11 @@ class VolunteerProfileUpdate(BaseModel):
             raise ValueError("Skills string too long (max 500 characters)")
         return v
 
+    @field_validator("availability")
+    @classmethod
+    def validate_availability(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_availability_json(v)
+
     @field_validator("bio")
     @classmethod
     def validate_bio(cls, v: Optional[str]) -> Optional[str]:
@@ -79,7 +102,7 @@ class VolunteerProfileResponse(BaseModel):
     is_available: bool
     total_tasks_completed: int
     total_hours_contributed: int
-    rating: int
+    rating: float          # float for accurate running average display
     created_at: datetime
     updated_at: datetime
 

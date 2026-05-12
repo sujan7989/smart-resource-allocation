@@ -4,8 +4,9 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from src.config import settings
-from src.database import Base, engine
+from src.database import Base, engine, check_db_connection
 from src.routes import (
     auth_routes,
     needs_routes,
@@ -21,8 +22,8 @@ from src.routes import (
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-# Rate limiter (keyed by client IP)
-limiter = Limiter(key_func=get_remote_address)
+# Shared rate limiter — used by all routes via app.state.limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 app = FastAPI(
     title="Smart Resource Allocation API",
@@ -35,6 +36,7 @@ app = FastAPI(
 # Attach rate limiter
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # CORS — allow configured frontend + localhost dev origins
 allowed_origins = [
@@ -43,7 +45,6 @@ allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:5173",
 ]
-# Remove duplicates and empty strings
 allowed_origins = list({o for o in allowed_origins if o})
 
 app.add_middleware(
@@ -78,4 +79,11 @@ def root():
 
 @app.get("/health", tags=["Root"])
 def health_check():
-    return {"status": "healthy"}
+    """Health check that verifies database connectivity."""
+    db_ok = check_db_connection()
+    if not db_ok:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unhealthy", "database": "unreachable"},
+        )
+    return {"status": "healthy", "database": "connected"}

@@ -39,10 +39,7 @@ def list_needs(
             | CommunityNeed.description.ilike(f"%{search}%")
         )
 
-    total = query.count()
-    results = query.order_by(CommunityNeed.urgency_score.desc()).offset(skip).limit(limit).all()
-    return results
-
+    return query.order_by(CommunityNeed.urgency_score.desc()).offset(skip).limit(limit).all()
 
 @router.post("/", response_model=CommunityNeedResponse, status_code=201)
 def create_need(

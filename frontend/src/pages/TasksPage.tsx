@@ -69,16 +69,12 @@ export default function TasksPage() {
         limit: PAGE_SIZE + 1,
       }
       if (filterStatus) params.status = filterStatus
-      if (search) params.city = search  // API supports city filter; extend as needed
+      if (search) params.city = search
 
-      const [tasksRes, needsRes] = await Promise.all([
-        api.get('/tasks/', { params }),
-        api.get('/needs/', { params: { limit: 100 } }),
-      ])
+      const tasksRes = await api.get('/tasks/', { params })
       const hasNext = tasksRes.data.length > PAGE_SIZE
       setTasks(hasNext ? tasksRes.data.slice(0, PAGE_SIZE) : tasksRes.data)
       setHasMore(hasNext)
-      setNeeds(needsRes.data)
 
       if (isVolunteer) {
         try {
@@ -95,14 +91,21 @@ export default function TasksPage() {
     }
   }, [filterStatus, search, isVolunteer])
 
+  // Fetch needs dropdown once on mount — not on every task refresh
+  useEffect(() => {
+    api.get('/needs/', { params: { limit: 100 } })
+      .then(r => setNeeds(r.data))
+      .catch(() => {})
+  }, [])
+
   useEffect(() => {
     setPage(0)
     fetchTasks(0)
   }, [filterStatus, search])
 
   useEffect(() => {
-    fetchTasks(page)
-  }, [page])
+    if (page > 0) fetchTasks(page)
+  }, [page, fetchTasks])
 
   // Debounce search
   useEffect(() => {

@@ -13,27 +13,24 @@ export default function InstallPrompt() {
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
-    // Check if already installed
+    // Already installed as PWA — don't show prompt
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true)
       return
     }
 
-    // Detect iOS
     const ios = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase())
     setIsIOS(ios)
 
-    // Android / Desktop install prompt
+    // Android / Desktop: capture the native install prompt
     const handler = (e: Event) => {
       e.preventDefault()
       setDeferredPrompt(e as BeforeInstallPromptEvent)
-      // Show after 3 seconds
       setTimeout(() => setShowPrompt(true), 3000)
     }
-
     window.addEventListener('beforeinstallprompt', handler)
 
-    // Show iOS instructions after 5 seconds
+    // iOS: show manual instructions after 5s (only once per session)
     if (ios && !localStorage.getItem('pwa-ios-dismissed')) {
       setTimeout(() => setShowPrompt(true), 5000)
     }
@@ -43,13 +40,16 @@ export default function InstallPrompt() {
 
   const handleInstall = async () => {
     if (!deferredPrompt) return
-    await deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
-    if (outcome === 'accepted') {
-      setIsInstalled(true)
+    try {
+      await deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+      if (outcome === 'accepted') setIsInstalled(true)
+    } catch {
+      // Browser rejected the prompt call — silently ignore
+    } finally {
+      setShowPrompt(false)
+      setDeferredPrompt(null)
     }
-    setShowPrompt(false)
-    setDeferredPrompt(null)
   }
 
   const handleDismiss = () => {
@@ -61,24 +61,29 @@ export default function InstallPrompt() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 max-w-sm mx-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-4">
+      <div className="bg-slate-900 border border-white/10 rounded-2xl shadow-2xl p-4">
         <div className="flex items-start gap-3">
-          <div className="bg-primary-600 rounded-xl p-2 shrink-0">
+          <div className="bg-blue-600 rounded-xl p-2 shrink-0">
             <Smartphone size={20} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-900 text-sm">Install App</p>
+            <p className="font-semibold text-white text-sm">Install App</p>
             {isIOS ? (
-              <p className="text-xs text-gray-500 mt-1">
-                Tap <strong>Share</strong> → <strong>"Add to Home Screen"</strong> to install this app on your iPhone
+              <p className="text-xs text-slate-400 mt-1">
+                Tap <strong className="text-slate-300">Share</strong> →{' '}
+                <strong className="text-slate-300">"Add to Home Screen"</strong> to install on your iPhone
               </p>
             ) : (
-              <p className="text-xs text-gray-500 mt-1">
-                Install <strong>Smart Resource Allocation</strong> on your device for quick access — works offline too
+              <p className="text-xs text-slate-400 mt-1">
+                Install <strong className="text-slate-300">SmartAlloc</strong> for quick access — works offline too
               </p>
             )}
           </div>
-          <button onClick={handleDismiss} className="text-gray-400 hover:text-gray-600 shrink-0">
+          <button
+            onClick={handleDismiss}
+            className="text-slate-500 hover:text-white transition-colors shrink-0"
+            aria-label="Dismiss install prompt"
+          >
             <X size={18} />
           </button>
         </div>
@@ -87,13 +92,13 @@ export default function InstallPrompt() {
           <div className="flex gap-2 mt-3">
             <button
               onClick={handleDismiss}
-              className="flex-1 text-sm text-gray-500 py-2 rounded-lg border border-gray-200 hover:bg-gray-50"
+              className="flex-1 text-sm text-slate-400 py-2 rounded-lg border border-white/10 hover:bg-white/5 transition-colors"
             >
               Not now
             </button>
             <button
               onClick={handleInstall}
-              className="flex-1 text-sm bg-primary-600 text-white py-2 rounded-lg font-medium hover:bg-primary-700 flex items-center justify-center gap-1"
+              className="flex-1 text-sm bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-medium flex items-center justify-center gap-1 transition-colors"
             >
               <Download size={14} /> Install
             </button>

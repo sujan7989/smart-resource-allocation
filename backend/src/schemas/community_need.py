@@ -70,6 +70,27 @@ class CommunityNeedUpdate(BaseModel):
     longitude: Optional[float] = None
     reported_by_org: Optional[str] = None
 
+    @field_validator("affected_people")
+    @classmethod
+    def validate_affected(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("Affected people cannot be negative")
+        return v
+
+    @field_validator("latitude")
+    @classmethod
+    def validate_latitude(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and not (-90 <= v <= 90):
+            raise ValueError("Latitude must be between -90 and 90")
+        return v
+
+    @field_validator("longitude")
+    @classmethod
+    def validate_longitude(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and not (-180 <= v <= 180):
+            raise ValueError("Longitude must be between -180 and 180")
+        return v
+
 
 class CommunityNeedResponse(BaseModel):
     id: str

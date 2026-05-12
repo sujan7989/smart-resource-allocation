@@ -72,50 +72,56 @@ export default function ProfilePage() {
   const [completeForm, setCompleteForm] = useState({ feedback: '', rating: 5, hours_spent: '' })
   const [completing, setCompleting] = useState(false)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true)
-      try {
-        if (isVolunteer) {
-          try {
-            const { data } = await api.get('/volunteers/me/profile')
-            setProfile(data)
-            setHasProfile(true)
-            setForm({
-              skills: data.skills || '',
-              availability: data.availability || '',
-              preferred_areas: data.preferred_areas || '',
-              experience_years: data.experience_years || 0,
-              bio: data.bio || '',
-              is_available: data.is_available,
-            })
-          } catch (err: any) {
-            if (err.response?.status === 404) setHasProfile(false)
-          }
-          const { data: asgn } = await api.get('/assignments/')
-          setAssignments(asgn)
+  // Fetch all data for this user — extracted so it can be called after task completion too
+  const fetchProfileData = async () => {
+    setLoading(true)
+    try {
+      if (isVolunteer) {
+        try {
+          const { data } = await api.get('/volunteers/me/profile')
+          setProfile(data)
+          setHasProfile(true)
+          setForm({
+            skills: data.skills || '',
+            availability: data.availability || '',
+            preferred_areas: data.preferred_areas || '',
+            experience_years: data.experience_years || 0,
+            bio: data.bio || '',
+            is_available: data.is_available,
+          })
+        } catch (err: any) {
+          if (err.response?.status === 404) setHasProfile(false)
         }
-        if (isFieldWorker) {
-          const { data: reports } = await api.get('/field-reports/')
-          setFieldReports(reports)
-        }
-      } finally {
-        setLoading(false)
+        const { data: asgn } = await api.get('/assignments/')
+        setAssignments(asgn)
       }
+      if (isFieldWorker) {
+        const { data: reports } = await api.get('/field-reports/')
+        setFieldReports(reports)
+      }
+    } finally {
+      setLoading(false)
     }
-    fetchData()
+  }
+
+  useEffect(() => {
+    // Sync account form with current user data (including role changes)
     setAccountForm({
       full_name: user?.full_name || '',
       phone: user?.phone || '',
       location: user?.location || '',
     })
-  }, [])
+    fetchProfileData()
+  // Re-run if user role changes (e.g. admin updates this user's role)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role, user?.id])
 
   const handleSaveAccount = async () => {
     setSaving(true)
     try {
       const { data } = await api.patch('/users/me', accountForm)
-      setAuth(data, token!)
+      // token is always present when authenticated — safe assertion
+      setAuth(data, token as string)
       toast.success('Profile updated!')
       setEditingAccount(false)
     } catch (err: any) {
@@ -187,8 +193,8 @@ export default function ProfilePage() {
       })
       toast.success('Task marked as completed!')
       setCompletingAssignment(null)
-      const { data } = await api.get('/assignments/')
-      setAssignments(data)
+      // Refresh both assignments AND volunteer profile (rating/hours updated on backend)
+      await fetchProfileData()
     } catch {
       toast.error('Failed to update')
     } finally {

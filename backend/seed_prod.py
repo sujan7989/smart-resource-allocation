@@ -32,8 +32,14 @@ admin_email = settings.ADMIN_EMAIL
 admin_password = settings.ADMIN_PASSWORD
 admin_name = settings.ADMIN_FULL_NAME
 
-if admin_password == "Admin@123" and os.getenv("RENDER"):
-    print("⚠️  WARNING: Using default admin password in production. Set ADMIN_PASSWORD env var.")
+if admin_password == "Admin@123":
+    cloud_env = os.getenv("RENDER") or os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("DYNO") or os.getenv("FLY_APP_NAME")
+    if cloud_env:
+        print("⚠️  WARNING: Using default admin password in production. Set ADMIN_PASSWORD env var immediately.")
+
+# Validate password meets policy
+if len(admin_password) < 8 or not any(c.isupper() for c in admin_password) or not any(c.isdigit() for c in admin_password):
+    print("⚠️  WARNING: Admin password does not meet security policy (8+ chars, 1 uppercase, 1 digit).")
 
 print(f"Creating admin account: {admin_email}")
 

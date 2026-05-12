@@ -3,11 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion'
 import api from '../api/client'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
-import { Plus, X, Loader2, Shield, Users, UserCheck, Trash2, ToggleLeft, ToggleRight, CheckCircle, XCircle } from 'lucide-react'
+import {
+  Plus, X, Loader2, Shield, Users, UserCheck, Trash2,
+  ToggleLeft, ToggleRight, CheckCircle, XCircle, Key, Edit2,
+} from 'lucide-react'
 
 interface UserItem {
-  id: string; email: string; full_name: string; role: string
-  is_active: boolean; phone?: string; location?: string; created_at: string
+  id: string
+  email: string
+  full_name: string
+  role: string
+  is_active: boolean
+  phone?: string
+  location?: string
+  created_at: string
 }
 
 interface Assignment {
@@ -24,8 +33,8 @@ interface Assignment {
 }
 
 const roleColors: Record<string, string> = {
-  admin: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-  volunteer: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  admin:        'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  volunteer:    'bg-blue-500/20 text-blue-400 border-blue-500/30',
   field_worker: 'bg-green-500/20 text-green-400 border-green-500/30',
 }
 
@@ -38,23 +47,37 @@ export default function AdminPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [activeTab, setActiveTab] = useState<'users' | 'assignments'>('users')
+
+  // Create user form
   const [form, setForm] = useState({
-    full_name: '', email: '', password: '', role: 'volunteer', phone: '', location: ''
+    full_name: '', email: '', password: '', role: 'volunteer', phone: '', location: '',
   })
   const [submitting, setSubmitting] = useState(false)
+
+  // Reset password modal
+  const [resetUserId, setResetUserId] = useState<string | null>(null)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetting, setResetting] = useState(false)
+
+  // Edit role modal
+  const [editRoleUser, setEditRoleUser] = useState<UserItem | null>(null)
+  const [newRole, setNewRole] = useState('')
+  const [savingRole, setSavingRole] = useState(false)
 
   const fetchData = async () => {
     setLoading(true)
     try {
       const [usersRes, assignRes] = await Promise.all([
         api.get('/users/'),
-        api.get('/assignments/')
+        api.get('/assignments/'),
       ])
       setUsers(usersRes.data)
       setAssignments(assignRes.data)
-    } catch { toast.error('Failed to load data') }
-    finally { setLoading(false) }
+    } catch {
+      toast.error('Failed to load data')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchData() }, [])
@@ -69,22 +92,27 @@ export default function AdminPage() {
       setForm({ full_name: '', email: '', password: '', role: 'volunteer', phone: '', location: '' })
       fetchData()
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Failed to create user')
-    } finally { setSubmitting(false) }
+      const detail = err.response?.data?.detail
+      toast.error(Array.isArray(detail) ? detail[0]?.msg : detail || 'Failed to create user')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
-  const handleToggleActive = async (userId: string, isActive: boolean) => {
+  const handleToggleActive = async (userId: string, isActive: boolean, name: string) => {
+    const action = isActive ? 'deactivate' : 'activate'
+    if (isActive && !confirm(`Deactivate ${name}? They will be logged out on their next request.`)) return
     try {
       await api.patch(`/users/${userId}`, { is_active: !isActive })
-      toast.success(isActive ? 'User deactivated' : 'User activated')
+      toast.success(isActive ? `${name} deactivated` : `${name} activated`)
       fetchData()
     } catch (err: any) {
-      toast.error(err.response?.data?.detail || 'Failed to update')
+      toast.error(err.response?.data?.detail || `Failed to ${action}`)
     }
   }
 
   const handleDeleteUser = async (userId: string, name: string) => {
-    if (!confirm(`Delete ${name}? This cannot be undone.`)) return
+    if (!confirm(`Permanently delete ${name}? This cannot be undone.`)) return
     try {
       await api.delete(`/users/${userId}`)
       toast.success('User deleted')
@@ -94,12 +122,47 @@ export default function AdminPage() {
     }
   }
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!resetUserId) return
+    setResetting(true)
+    try {
+      await api.post(`/users/${resetUserId}/reset-password`, { new_password: resetPassword })
+      toast.success('Password reset successfully')
+      setResetUserId(null)
+      setResetPassword('')
+    } catch (err: any) {
+      const detail = err.response?.data?.detail
+      toast.error(Array.isArray(detail) ? detail[0]?.msg : detail || 'Failed to reset password')
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  const handleSaveRole = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editRoleUser) return
+    setSavingRole(true)
+    try {
+      await api.patch(`/users/${editRoleUser.id}`, { role: newRole })
+      toast.success(`Role updated to ${newRole}`)
+      setEditRoleUser(null)
+      fetchData()
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to update role')
+    } finally {
+      setSavingRole(false)
+    }
+  }
+
   const handleApproveAssignment = async (assignmentId: string) => {
     try {
       await api.patch(`/assignments/${assignmentId}`, { status: 'accepted' })
       toast.success('Assignment approved!')
       fetchData()
-    } catch { toast.error('Failed to approve') }
+    } catch {
+      toast.error('Failed to approve')
+    }
   }
 
   const handleRejectAssignment = async (assignmentId: string) => {
@@ -107,7 +170,9 @@ export default function AdminPage() {
       await api.patch(`/assignments/${assignmentId}`, { status: 'rejected' })
       toast.success('Assignment rejected')
       fetchData()
-    } catch { toast.error('Failed to reject') }
+    } catch {
+      toast.error('Failed to reject')
+    }
   }
 
   const pendingAssignments = assignments.filter(a => a.status === 'pending')
@@ -117,6 +182,7 @@ export default function AdminPage() {
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+      {/* Header */}
       <motion.div variants={item} className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'Plus Jakarta Sans' }}>
@@ -126,7 +192,8 @@ export default function AdminPage() {
         </div>
         <motion.button
           onClick={() => setShowForm(true)}
-          whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
           className="btn-primary flex items-center gap-2"
         >
           <Plus size={16} /> Add User
@@ -136,8 +203,8 @@ export default function AdminPage() {
       {/* Summary cards */}
       <motion.div variants={item} className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Admins', count: adminCount, icon: Shield, color: 'from-purple-500/20 to-indigo-500/20 border-purple-500/20' },
-          { label: 'Volunteers', count: volunteerCount, icon: Users, color: 'from-blue-500/20 to-cyan-500/20 border-blue-500/20' },
+          { label: 'Admins',        count: adminCount,       icon: Shield,    color: 'from-purple-500/20 to-indigo-500/20 border-purple-500/20' },
+          { label: 'Volunteers',    count: volunteerCount,   icon: Users,     color: 'from-blue-500/20 to-cyan-500/20 border-blue-500/20' },
           { label: 'Field Workers', count: fieldWorkerCount, icon: UserCheck, color: 'from-green-500/20 to-emerald-500/20 border-green-500/20' },
         ].map(c => (
           <div key={c.label} className={`rounded-2xl border bg-gradient-to-br ${c.color} p-4`}>
@@ -155,36 +222,35 @@ export default function AdminPage() {
             ⏳ {pendingAssignments.length} assignment{pendingAssignments.length > 1 ? 's' : ''} waiting for your approval
           </p>
           <div className="space-y-2">
-            {pendingAssignments.map(a => {
-              const vol = users.find(u => u.id === a.volunteer_id)
-              return (
-                <div key={a.id} className="flex items-center justify-between bg-slate-800/50 rounded-xl p-3">
-                  <div>
-                    <p className="text-sm font-medium text-white">{a.volunteer_name || 'Volunteer'}</p>
-                    <p className="text-xs text-slate-500">
-                      {a.task_title ? <span className="text-slate-300">{a.task_title}</span> : `Task #${a.task_id.slice(0, 8)}`}
-                      {' · '}Match: <span className="text-blue-400 font-semibold">{a.match_score}%</span>
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <motion.button
-                      onClick={() => handleApproveAssignment(a.id)}
-                      whileTap={{ scale: 0.95 }}
-                      className="flex items-center gap-1 bg-green-500/20 text-green-400 border border-green-500/30 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-green-500/30 transition-colors"
-                    >
-                      <CheckCircle size={13} /> Approve
-                    </motion.button>
-                    <motion.button
-                      onClick={() => handleRejectAssignment(a.id)}
-                      whileTap={{ scale: 0.95 }}
-                      className="flex items-center gap-1 bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-red-500/30 transition-colors"
-                    >
-                      <XCircle size={13} /> Reject
-                    </motion.button>
-                  </div>
+            {pendingAssignments.map(a => (
+              <div key={a.id} className="flex items-center justify-between bg-slate-800/50 rounded-xl p-3">
+                <div>
+                  <p className="text-sm font-medium text-white">{a.volunteer_name || 'Volunteer'}</p>
+                  <p className="text-xs text-slate-500">
+                    {a.task_title
+                      ? <span className="text-slate-300">{a.task_title}</span>
+                      : `Task #${a.task_id.slice(0, 8)}`}
+                    {' · '}Match: <span className="text-blue-400 font-semibold">{a.match_score}%</span>
+                  </p>
                 </div>
-              )
-            })}
+                <div className="flex gap-2">
+                  <motion.button
+                    onClick={() => handleApproveAssignment(a.id)}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-1 bg-green-500/20 text-green-400 border border-green-500/30 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-green-500/30 transition-colors"
+                  >
+                    <CheckCircle size={13} /> Approve
+                  </motion.button>
+                  <motion.button
+                    onClick={() => handleRejectAssignment(a.id)}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center gap-1 bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-medium px-3 py-1.5 rounded-lg hover:bg-red-500/30 transition-colors"
+                  >
+                    <XCircle size={13} /> Reject
+                  </motion.button>
+                </div>
+              </div>
+            ))}
           </div>
         </motion.div>
       )}
@@ -200,14 +266,16 @@ export default function AdminPage() {
           >
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-bold text-white text-lg">Create New User</h2>
-              <button onClick={() => setShowForm(false)} className="text-slate-500 hover:text-white transition-colors"><X size={20} /></button>
+              <button onClick={() => setShowForm(false)} className="text-slate-500 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
             </div>
 
             {/* Role selector */}
             <div className="grid grid-cols-3 gap-3 mb-4">
               {[
-                { value: 'admin', label: '🛡️ Admin', desc: 'Full access' },
-                { value: 'volunteer', label: '🙋 Volunteer', desc: 'Accept tasks' },
+                { value: 'admin',        label: '🛡️ Admin',        desc: 'Full access' },
+                { value: 'volunteer',    label: '🙋 Volunteer',    desc: 'Accept tasks' },
                 { value: 'field_worker', label: '🗺️ Field Worker', desc: 'Submit reports' },
               ].map(r => (
                 <button
@@ -229,19 +297,46 @@ export default function AdminPage() {
             <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="input-label">Full Name</label>
-                <input className="input" value={form.full_name} onChange={e => setForm(f => ({...f, full_name: e.target.value}))} required placeholder="John Doe" />
+                <input
+                  className="input"
+                  value={form.full_name}
+                  onChange={e => setForm(f => ({ ...f, full_name: e.target.value }))}
+                  required
+                  minLength={2}
+                  placeholder="Jane Doe"
+                />
               </div>
               <div>
                 <label className="input-label">Email</label>
-                <input type="email" className="input" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} required placeholder="john@ngo.org" />
+                <input
+                  type="email"
+                  className="input"
+                  value={form.email}
+                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  required
+                  placeholder="jane@ngo.org"
+                />
               </div>
               <div>
                 <label className="input-label">Password</label>
-                <input type="password" className="input" value={form.password} onChange={e => setForm(f => ({...f, password: e.target.value}))} required minLength={6} placeholder="Min 6 characters" />
+                <input
+                  type="password"
+                  className="input"
+                  value={form.password}
+                  onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  required
+                  minLength={8}
+                  placeholder="Min 8 chars, 1 uppercase, 1 digit"
+                />
               </div>
               <div>
-                <label className="input-label">City (optional)</label>
-                <input className="input" value={form.location} onChange={e => setForm(f => ({...f, location: e.target.value}))} placeholder="Mumbai" />
+                <label className="input-label">City <span className="text-slate-600">(optional)</span></label>
+                <input
+                  className="input"
+                  value={form.location}
+                  onChange={e => setForm(f => ({ ...f, location: e.target.value }))}
+                  placeholder="Lagos"
+                />
               </div>
               <div className="md:col-span-2 flex gap-3 justify-end pt-2">
                 <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
@@ -250,6 +345,120 @@ export default function AdminPage() {
                 </button>
               </div>
             </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Reset password modal */}
+      <AnimatePresence>
+        {resetUserId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={e => { if (e.target === e.currentTarget) { setResetUserId(null); setResetPassword('') } }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="card w-full max-w-sm border-orange-500/20"
+              onClick={e => e.stopPropagation()}
+            >
+              <h2 className="font-bold text-white text-lg mb-1 flex items-center gap-2">
+                <Key size={18} className="text-orange-400" /> Reset Password
+              </h2>
+              <p className="text-xs text-slate-500 mb-4">
+                Set a new password for {users.find(u => u.id === resetUserId)?.full_name}
+              </p>
+              <form onSubmit={handleResetPassword} className="space-y-3">
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="New password (min 8 chars, 1 uppercase, 1 digit)"
+                  value={resetPassword}
+                  onChange={e => setResetPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    className="btn-secondary text-sm py-2"
+                    onClick={() => { setResetUserId(null); setResetPassword('') }}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn-primary text-sm py-2 flex items-center gap-2" disabled={resetting}>
+                    {resetting && <Loader2 size={13} className="animate-spin" />} Reset Password
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit role modal */}
+      <AnimatePresence>
+        {editRoleUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={e => { if (e.target === e.currentTarget) setEditRoleUser(null) }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="card w-full max-w-sm border-blue-500/20"
+              onClick={e => e.stopPropagation()}
+            >
+              <h2 className="font-bold text-white text-lg mb-1 flex items-center gap-2">
+                <Edit2 size={18} className="text-blue-400" /> Change Role
+              </h2>
+              <p className="text-xs text-slate-500 mb-4">
+                Changing role for <span className="text-white">{editRoleUser.full_name}</span>
+              </p>
+              <form onSubmit={handleSaveRole} className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'admin',        label: '🛡️ Admin' },
+                    { value: 'volunteer',    label: '🙋 Volunteer' },
+                    { value: 'field_worker', label: '🗺️ Field Worker' },
+                  ].map(r => (
+                    <button
+                      key={r.value}
+                      type="button"
+                      onClick={() => setNewRole(r.value)}
+                      className={`p-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                        newRole === r.value
+                          ? 'border-blue-500/60 bg-blue-500/10 text-white'
+                          : 'border-white/10 bg-slate-800/50 text-slate-400 hover:border-white/20'
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button type="button" className="btn-secondary text-sm py-2" onClick={() => setEditRoleUser(null)}>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary text-sm py-2 flex items-center gap-2"
+                    disabled={savingRole || !newRole || newRole === editRoleUser.role}
+                  >
+                    {savingRole && <Loader2 size={13} className="animate-spin" />} Save Role
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -270,9 +479,9 @@ export default function AdminPage() {
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-lg ${
-                    u.role === 'admin' ? 'bg-gradient-to-br from-purple-500 to-indigo-600' :
-                    u.role === 'volunteer' ? 'bg-gradient-to-br from-blue-500 to-cyan-600' :
-                    'bg-gradient-to-br from-green-500 to-emerald-600'
+                    u.role === 'admin'        ? 'bg-gradient-to-br from-purple-500 to-indigo-600' :
+                    u.role === 'volunteer'    ? 'bg-gradient-to-br from-blue-500 to-cyan-600' :
+                                               'bg-gradient-to-br from-green-500 to-emerald-600'
                   }`}>
                     {u.full_name.charAt(0).toUpperCase()}
                   </div>
@@ -286,17 +495,42 @@ export default function AdminPage() {
                     <p className="text-xs text-slate-500">{u.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  {u.location && <span className="text-xs text-slate-500 hidden md:block">{u.location}</span>}
+
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  {u.location && (
+                    <span className="text-xs text-slate-500 hidden md:block">{u.location}</span>
+                  )}
                   <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${roleColors[u.role]}`}>
                     {u.role.replace('_', ' ')}
                   </span>
+
                   {u.id !== currentUser?.id && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      {/* Change role */}
                       <motion.button
-                        onClick={() => handleToggleActive(u.id, u.is_active)}
+                        onClick={() => { setEditRoleUser(u); setNewRole(u.role) }}
                         whileTap={{ scale: 0.95 }}
-                        className="text-slate-500 hover:text-white transition-colors"
+                        className="text-slate-500 hover:text-blue-400 transition-colors p-1"
+                        title="Change role"
+                      >
+                        <Edit2 size={15} />
+                      </motion.button>
+
+                      {/* Reset password */}
+                      <motion.button
+                        onClick={() => setResetUserId(u.id)}
+                        whileTap={{ scale: 0.95 }}
+                        className="text-slate-500 hover:text-orange-400 transition-colors p-1"
+                        title="Reset password"
+                      >
+                        <Key size={15} />
+                      </motion.button>
+
+                      {/* Toggle active */}
+                      <motion.button
+                        onClick={() => handleToggleActive(u.id, u.is_active, u.full_name)}
+                        whileTap={{ scale: 0.95 }}
+                        className="text-slate-500 hover:text-white transition-colors p-1"
                         title={u.is_active ? 'Deactivate' : 'Activate'}
                       >
                         {u.is_active
@@ -304,13 +538,15 @@ export default function AdminPage() {
                           : <ToggleLeft size={20} />
                         }
                       </motion.button>
+
+                      {/* Delete */}
                       <motion.button
                         onClick={() => handleDeleteUser(u.id, u.full_name)}
                         whileTap={{ scale: 0.95 }}
-                        className="text-slate-600 hover:text-red-400 transition-colors"
+                        className="text-slate-600 hover:text-red-400 transition-colors p-1"
                         title="Delete user"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={15} />
                       </motion.button>
                     </div>
                   )}

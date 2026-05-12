@@ -157,14 +157,16 @@ def get_top_volunteers_for_task(
     # Exclude volunteers already actively assigned to this task
     active_volunteer_ids = {
         a.volunteer_id
-        for a in db.query(Assignment).filter(
+        for a in db.query(Assignment.volunteer_id).filter(
             Assignment.task_id == task.id,
             Assignment.status.in_([AssignmentStatus.PENDING, AssignmentStatus.ACCEPTED]),
         ).all()
     }
 
-    volunteers = (
-        db.query(User)
+    # Single JOIN query — no N+1
+    rows = (
+        db.query(User, VolunteerProfile)
+        .outerjoin(VolunteerProfile, VolunteerProfile.user_id == User.id)
         .filter(
             User.role == UserRole.VOLUNTEER,
             User.is_active == True,
@@ -174,12 +176,7 @@ def get_top_volunteers_for_task(
     )
 
     scored: List[Tuple[User, VolunteerProfile, int]] = []
-    for vol in volunteers:
-        profile = (
-            db.query(VolunteerProfile)
-            .filter(VolunteerProfile.user_id == vol.id)
-            .first()
-        )
+    for vol, profile in rows:
         score = compute_match_score(vol, profile, task)
         if score > 0:
             scored.append((vol, profile, score))
@@ -207,7 +204,7 @@ def get_recommended_tasks_for_volunteer(
     from src.models.assignment import AssignmentStatus
     assigned_task_ids = {
         a.task_id
-        for a in db.query(Assignment).filter(
+        for a in db.query(Assignment.task_id).filter(
             Assignment.volunteer_id == volunteer.id,
             Assignment.status.in_([AssignmentStatus.PENDING, AssignmentStatus.ACCEPTED]),
         ).all()

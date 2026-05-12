@@ -6,11 +6,11 @@ export default function UpdatePrompt() {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegistered(r) {
-      console.log('SW registered:', r)
+    onRegistered(_r) {
+      // Service worker registered successfully — no console noise in production
     },
-    onRegisterError(error) {
-      console.log('SW registration error', error)
+    onRegisterError(_error) {
+      // SW registration failed — silently ignore (app still works without SW)
     },
   })
 
@@ -18,22 +18,22 @@ export default function UpdatePrompt() {
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 max-w-sm mx-auto">
-      <div className="bg-primary-900 text-white rounded-2xl shadow-2xl p-4 flex items-center gap-3">
-        <RefreshCw size={20} className="shrink-0 text-primary-300" />
+      <div className="bg-slate-900 border border-white/10 text-white rounded-2xl shadow-2xl p-4 flex items-center gap-3">
+        <RefreshCw size={20} className="shrink-0 text-blue-400" />
         <div className="flex-1">
           <p className="text-sm font-semibold">Update Available</p>
-          <p className="text-xs text-primary-300">A new version is ready</p>
+          <p className="text-xs text-slate-400">A new version is ready to install</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setNeedRefresh(false)}
-            className="text-xs text-primary-300 hover:text-white px-2 py-1"
+            className="text-xs text-slate-400 hover:text-white px-2 py-1 transition-colors"
           >
             Later
           </button>
           <button
             onClick={() => updateServiceWorker(true)}
-            className="text-xs bg-primary-500 hover:bg-primary-400 px-3 py-1 rounded-lg font-medium"
+            className="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-1 rounded-lg font-medium transition-colors"
           >
             Update
           </button>
