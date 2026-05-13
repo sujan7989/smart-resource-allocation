@@ -83,6 +83,11 @@ def delete_task(
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    # Manually delete assignments first (handles DBs without CASCADE FK)
+    from src.models.assignment import Assignment
+    db.query(Assignment).filter(Assignment.task_id == task_id).delete()
+
     db.delete(task)
     db.commit()
 

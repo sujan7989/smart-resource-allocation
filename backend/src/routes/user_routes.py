@@ -155,5 +155,14 @@ def admin_delete_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+
+    # Manually delete related records first (handles DBs without CASCADE FK)
+    from src.models.assignment import Assignment
+    from src.models.field_report import FieldReport
+    from src.models.volunteer import VolunteerProfile
+
+    db.query(Assignment).filter(Assignment.volunteer_id == user_id).delete()
+    db.query(FieldReport).filter(FieldReport.submitted_by_id == user_id).delete()
+    db.query(VolunteerProfile).filter(VolunteerProfile.user_id == user_id).delete()
     db.delete(user)
     db.commit()

@@ -99,5 +99,26 @@ def delete_need(
     need = db.query(CommunityNeed).filter(CommunityNeed.id == need_id).first()
     if not need:
         raise HTTPException(status_code=404, detail="Community need not found")
+
+    # Manually delete related records first (handles DBs without CASCADE FK)
+    from src.models.task import Task
+    from src.models.assignment import Assignment
+    from src.models.field_report import FieldReport
+
+    # Get all task IDs for this need
+    task_ids = [t.id for t in db.query(Task).filter(Task.community_need_id == need_id).all()]
+
+    # Delete assignments for those tasks
+    if task_ids:
+        db.query(Assignment).filter(Assignment.task_id.in_(task_ids)).delete(synchronize_session=False)
+
+    # Delete tasks
+    db.query(Task).filter(Task.community_need_id == need_id).delete()
+
+    # Unlink field reports (don't delete them, just unlink)
+    db.query(FieldReport).filter(FieldReport.community_need_id == need_id).update(
+        {"community_need_id": None}, synchronize_session=False
+    )
+
     db.delete(need)
     db.commit()
