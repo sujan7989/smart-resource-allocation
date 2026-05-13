@@ -5,19 +5,32 @@ from src.config import settings
 
 is_sqlite = settings.DATABASE_URL.startswith("sqlite")
 
-# SQLite needs check_same_thread=False; PostgreSQL benefits from pool config
+# Supabase pooler uses port 6543 with pgbouncer — needs special config
+is_supabase_pooler = "pooler.supabase.com" in settings.DATABASE_URL
+
 if is_sqlite:
     engine = create_engine(
         settings.DATABASE_URL,
         connect_args={"check_same_thread": False},
     )
-else:
+elif is_supabase_pooler:
+    # Supabase pgbouncer pooler: disable server-side prepared statements
     engine = create_engine(
         settings.DATABASE_URL,
         pool_size=settings.DB_POOL_SIZE,
         max_overflow=settings.DB_MAX_OVERFLOW,
-        pool_pre_ping=True,       # verify connections before use
-        pool_recycle=300,         # recycle connections every 5 minutes
+        pool_pre_ping=True,
+        pool_recycle=300,
+        connect_args={"options": "-c statement_timeout=30000"},
+    )
+else:
+    # Standard PostgreSQL (Render managed DB, direct Supabase, etc.)
+    engine = create_engine(
+        settings.DATABASE_URL,
+        pool_size=settings.DB_POOL_SIZE,
+        max_overflow=settings.DB_MAX_OVERFLOW,
+        pool_pre_ping=True,
+        pool_recycle=300,
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
