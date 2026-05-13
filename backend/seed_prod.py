@@ -1,11 +1,13 @@
 """
-Production seed — only creates the admin account if database is empty.
-NO fake/sample data. Real users will enter real data.
-Safe to run on every deploy.
+Production seed — creates the admin account ONLY if no admin exists.
 
-Admin credentials are read from environment variables:
+- NO fake or demo data is created.
+- Real users, needs, tasks, and reports are entered by your team.
+- Safe to run on every deploy (skips if admin already exists).
+
+Admin credentials come from environment variables:
   ADMIN_EMAIL     (default: admin@smartalloc.org)
-  ADMIN_PASSWORD  (REQUIRED in production — set this in your env)
+  ADMIN_PASSWORD  (set this in Render/Railway env — do NOT use the default)
   ADMIN_FULL_NAME (default: Platform Admin)
 """
 import sys
@@ -17,29 +19,33 @@ from src.models.user import User, UserRole
 from src.auth import get_password_hash
 from src.config import settings
 
-# Create all tables
+# Create all tables (safe — does nothing if tables already exist)
 Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
 
-# Only seed if no admin exists
+# Skip if admin already exists
 if db.query(User).filter(User.role == UserRole.ADMIN).count() > 0:
-    print("Admin account already exists. Skipping seed.")
+    print("✅ Admin account already exists. Skipping seed.")
     db.close()
     sys.exit(0)
 
-admin_email = settings.ADMIN_EMAIL
+admin_email    = settings.ADMIN_EMAIL
 admin_password = settings.ADMIN_PASSWORD
-admin_name = settings.ADMIN_FULL_NAME
+admin_name     = settings.ADMIN_FULL_NAME
 
-if admin_password == "Admin@123":
-    cloud_env = os.getenv("RENDER") or os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("DYNO") or os.getenv("FLY_APP_NAME")
-    if cloud_env:
-        print("⚠️  WARNING: Using default admin password in production. Set ADMIN_PASSWORD env var immediately.")
+# Warn if using default password on any cloud platform
+is_cloud = any(os.getenv(k) for k in ["RENDER", "RAILWAY_ENVIRONMENT", "DYNO", "FLY_APP_NAME"])
+if admin_password == "Admin@123" and is_cloud:
+    print("⚠️  WARNING: Using default admin password in production!")
+    print("   Set ADMIN_PASSWORD environment variable immediately.")
 
-# Validate password meets policy
-if len(admin_password) < 8 or not any(c.isupper() for c in admin_password) or not any(c.isdigit() for c in admin_password):
-    print("⚠️  WARNING: Admin password does not meet security policy (8+ chars, 1 uppercase, 1 digit).")
+# Warn if password doesn't meet policy
+if (len(admin_password) < 8
+        or not any(c.isupper() for c in admin_password)
+        or not any(c.isdigit() for c in admin_password)):
+    print("⚠️  WARNING: Admin password does not meet security policy.")
+    print("   Requires: 8+ characters, 1 uppercase letter, 1 digit.")
 
 print(f"Creating admin account: {admin_email}")
 
@@ -53,7 +59,12 @@ db.add(admin)
 db.commit()
 
 print("✅ Admin account created.")
-print(f"   Email: {admin_email}")
-print("   Password: [set via ADMIN_PASSWORD env var]")
-print("   All other data will be entered by real users.")
+print(f"   Email:    {admin_email}")
+print("   Password: [from ADMIN_PASSWORD env var]")
+print()
+print("Next steps:")
+print("  1. Log in at your frontend URL")
+print("  2. Go to User Management → Add your team members")
+print("  3. Go to Community Needs → Add real needs from your area")
+print("  4. Go to Tasks → Create tasks linked to those needs")
 db.close()

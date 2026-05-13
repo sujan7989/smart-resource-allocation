@@ -1,24 +1,28 @@
-# Python
+# ── Python ────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyo
+*.egg-info/
 backend/venv/
 backend/.env
-backend/*.db
+backend/*.db          # never commit SQLite databases
 backend/smart_resource.db
-*.egg-info/
 
-# Node
+# ── Node ──────────────────────────────────────────────────────
 frontend/node_modules/
-frontend/dist/
+frontend/dist/        # production build artifacts
+frontend/dev-dist/    # dev build artifacts
 frontend/.env
 frontend/.env.local
 
-# IDE
+# ── IDE / OS ──────────────────────────────────────────────────
 .vscode/settings.json
 .idea/
 *.swp
-
-# OS
 .DS_Store
 Thumbs.db
+
+# ── Test / temp files ─────────────────────────────────────────
+test_*.py
+test_*.ps1
+*.test.py

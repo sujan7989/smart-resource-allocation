@@ -1,26 +1,28 @@
 services:
   - type: web
-    name: smart-resource-allocation-api
+    name: smart-resource-allocation
     env: python
     region: singapore
     plan: free
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: python migrate.py && python seed_prod.py && uvicorn src.main:app --host 0.0.0.0 --port $PORT
     envVars:
+      # DATABASE_URL must be set manually in Render dashboard
+      # Use your Supabase Shared Pooler connection string:
+      # postgresql://postgres.[ref]:[password]@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
       - key: DATABASE_URL
-        fromDatabase:
-          name: smart-resource-db
-          property: connectionString
+        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL
         value: https://smart-resource-allocation.vercel.app
+      - key: ADMIN_EMAIL
+        value: admin@smartalloc.org
+      # ADMIN_PASSWORD must be set manually — do NOT use the default
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_FULL_NAME
+        value: Platform Admin
       - key: PYTHON_VERSION
         value: 3.11.9
-
-databases:
-  - name: smart-resource-db
-    databaseName: smart_resource_db
-    user: smartalloc
-    region: singapore
-    plan: free
