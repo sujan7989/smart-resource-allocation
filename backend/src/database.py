@@ -5,7 +5,7 @@ from src.config import settings
 
 is_sqlite = settings.DATABASE_URL.startswith("sqlite")
 
-# Supabase pooler uses port 6543 with pgbouncer — needs special config
+# Supabase pooler uses port 5432 (shared pooler) or 6543 (dedicated pooler)
 is_supabase_pooler = "pooler.supabase.com" in settings.DATABASE_URL
 
 if is_sqlite:
@@ -14,17 +14,17 @@ if is_sqlite:
         connect_args={"check_same_thread": False},
     )
 elif is_supabase_pooler:
-    # Supabase pgbouncer pooler: disable server-side prepared statements
+    # Supabase shared pooler (port 5432) — works with standard SQLAlchemy
+    # No special connect_args needed for shared pooler
     engine = create_engine(
         settings.DATABASE_URL,
         pool_size=settings.DB_POOL_SIZE,
         max_overflow=settings.DB_MAX_OVERFLOW,
         pool_pre_ping=True,
         pool_recycle=300,
-        connect_args={"options": "-c statement_timeout=30000"},
     )
 else:
-    # Standard PostgreSQL (Render managed DB, direct Supabase, etc.)
+    # Standard PostgreSQL direct connection
     engine = create_engine(
         settings.DATABASE_URL,
         pool_size=settings.DB_POOL_SIZE,
