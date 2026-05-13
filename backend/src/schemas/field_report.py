@@ -71,7 +71,7 @@ class FieldReportResponse(BaseModel):
     status: ReportStatus
     admin_notes: Optional[str] = None
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None  # nullable for pre-migration rows
 
     class Config:
         from_attributes = True

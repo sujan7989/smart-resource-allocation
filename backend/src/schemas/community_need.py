@@ -110,7 +110,7 @@ class CommunityNeedResponse(BaseModel):
     reported_by_org: Optional[str] = None
     is_verified: bool
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None  # nullable for pre-migration rows
 
     class Config:
         from_attributes = True

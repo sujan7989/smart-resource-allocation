@@ -101,10 +101,10 @@ class VolunteerProfileResponse(BaseModel):
     bio: Optional[str] = None
     is_available: bool
     total_tasks_completed: int
-    total_hours_contributed: int
-    rating: float          # float for accurate running average display
+    total_hours_contributed: int = 0   # default 0 for rows created before this column existed
+    rating: float = 0.0                # default 0.0 for rows created before float migration
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None  # nullable for rows created before this column existed
 
     class Config:
         from_attributes = True

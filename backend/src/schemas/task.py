@@ -77,7 +77,7 @@ class TaskResponse(BaseModel):
     city: str
     deadline: Optional[datetime] = None
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None  # nullable for pre-migration rows
 
     class Config:
         from_attributes = True
