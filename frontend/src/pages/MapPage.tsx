@@ -74,11 +74,26 @@ export default function MapPage() {
   const [filter, setFilter] = useState<Filter>('all')
 
   useEffect(() => {
-    // Fetch all needs (up to 500) for the map — no silent truncation
-    api.get('/needs/', { params: { limit: 500 } })
-      .then(r => setNeeds(r.data))
-      .catch(() => toast.error('Failed to load needs'))
-      .finally(() => setLoading(false))
+    // Fetch all needs across multiple pages for the map
+    const fetchAllNeeds = async () => {
+      try {
+        const allNeeds: Need[] = []
+        let skip = 0
+        const pageSize = 100
+        while (true) {
+          const r = await api.get('/needs/', { params: { skip, limit: pageSize } })
+          allNeeds.push(...r.data)
+          if (r.data.length < pageSize) break  // last page
+          skip += pageSize
+        }
+        setNeeds(allNeeds)
+      } catch {
+        toast.error('Failed to load needs')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchAllNeeds()
   }, [])
 
   const geoNeeds = needs.filter(
