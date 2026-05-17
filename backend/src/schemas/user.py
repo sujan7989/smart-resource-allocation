@@ -183,3 +183,10 @@ class AdminResetPassword(BaseModel):
         if not any(c.isdigit() for c in v):
             raise ValueError("Password must contain at least one digit")
         return v
+
+
+class Token(BaseModel):
+    """Returned by login and register endpoints."""
+    access_token: str
+    token_type: str
+    user: UserResponse

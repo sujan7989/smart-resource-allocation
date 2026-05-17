@@ -53,11 +53,7 @@ export default function Layout() {
   }, [user])
 
   const handleLogout = async () => {
-    try {
-      await api.post('/auth/logout')
-    } catch {
-      // ignore — cookie will expire naturally
-    }
+    try { await api.post('/auth/logout') } catch { /* ignore */ }
     clearAuth()
     navigate('/login')
   }

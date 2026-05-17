@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [liveStats, setLiveStats] = useState<{
     people: number; needs: number; volunteers: number
   } | null>(null)
-  const { setUser } = useAuthStore()
+  const { setAuth } = useAuthStore()
   const navigate = useNavigate()
 
   // Fetch real live stats for the login page (public endpoint)
@@ -37,8 +37,8 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { data } = await api.post('/auth/login', { email, password })
-      setUser(data)
-      toast.success(`Welcome back, ${data.full_name}!`)
+      setAuth(data.user, data.access_token)
+      toast.success(`Welcome back, ${data.user.full_name}!`)
       navigate('/dashboard')
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Invalid credentials')

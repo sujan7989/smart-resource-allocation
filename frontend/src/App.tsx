@@ -17,14 +17,12 @@ import NotFoundPage from './pages/NotFoundPage'
 import Layout from './components/Layout'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuthStore()
-  if (isLoading) return <AppLoader />
+  const { isAuthenticated } = useAuthStore()
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuthStore()
-  if (isLoading) return <AppLoader />
+  const { isAuthenticated } = useAuthStore()
   return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" replace />
 }
 
@@ -35,20 +33,10 @@ function RoleRoute({
   children: React.ReactNode
   roles: Array<'admin' | 'volunteer' | 'field_worker'>
 }) {
-  const { user, isAuthenticated, isLoading } = useAuthStore()
-  if (isLoading) return <AppLoader />
+  const { user, isAuthenticated } = useAuthStore()
   if (!isAuthenticated) return <Navigate to="/login" replace />
   if (!user || !roles.includes(user.role)) return <Navigate to="/dashboard" replace />
   return <>{children}</>
-}
-
-/** Full-screen spinner shown while the session cookie is being validated. */
-function AppLoader() {
-  return (
-    <div className="min-h-screen animated-bg flex items-center justify-center">
-      <div className="w-10 h-10 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin" />
-    </div>
-  )
 }
 
 export default function App() {

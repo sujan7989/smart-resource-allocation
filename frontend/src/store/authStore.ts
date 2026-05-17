@@ -13,29 +13,65 @@ export interface User {
 
 interface AuthState {
   user: User | null
+  token: string | null
   isAuthenticated: boolean
-  isLoading: boolean          // true while /api/auth/me is in-flight on app load
-  setUser: (user: User) => void
+  isLoading: boolean
+  setAuth: (user: User, token: string) => void
   clearAuth: () => void
   setLoading: (loading: boolean) => void
 }
 
 /**
- * Auth state lives entirely in memory.
- * The JWT is stored in a httpOnly cookie set by the backend — JavaScript
- * cannot read or write it, which eliminates XSS token theft.
+ * Token storage strategy:
+ * - Primary: Zustand in-memory (fastest, most secure)
+ * - Fallback: sessionStorage (survives page refresh within the same tab,
+ *   cleared automatically when the browser tab/window is closed,
+ *   NOT shared across tabs, NOT accessible from other origins)
  *
- * On app load, App.tsx calls GET /api/auth/me to restore the session.
- * On logout, POST /api/auth/logout tells the backend to clear the cookie.
+ * Why NOT localStorage: persists forever, accessible to any JS on the page.
+ * Why NOT httpOnly cookie: doesn't work cross-domain (Vercel ↔ Render).
+ * Why sessionStorage: best balance of security and UX for cross-domain SPAs.
  */
+const SESSION_TOKEN_KEY = 'sra_token'
+const SESSION_USER_KEY  = 'sra_user'
+
+function loadInitialAuth(): { user: User | null; token: string | null; isAuthenticated: boolean } {
+  try {
+    const token   = sessionStorage.getItem(SESSION_TOKEN_KEY)
+    const userStr = sessionStorage.getItem(SESSION_USER_KEY)
+    if (!token || !userStr) return { user: null, token: null, isAuthenticated: false }
+
+    // Quick client-side expiry check — avoids a 401 on the first API call
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    if (payload.exp * 1000 < Date.now()) {
+      sessionStorage.removeItem(SESSION_TOKEN_KEY)
+      sessionStorage.removeItem(SESSION_USER_KEY)
+      return { user: null, token: null, isAuthenticated: false }
+    }
+
+    return { user: JSON.parse(userStr), token, isAuthenticated: true }
+  } catch {
+    sessionStorage.removeItem(SESSION_TOKEN_KEY)
+    sessionStorage.removeItem(SESSION_USER_KEY)
+    return { user: null, token: null, isAuthenticated: false }
+  }
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  isAuthenticated: false,
-  isLoading: true,   // start as loading — App.tsx resolves this on mount
+  ...loadInitialAuth(),
+  isLoading: false,
 
-  setUser: (user) => set({ user, isAuthenticated: true, isLoading: false }),
+  setAuth: (user, token) => {
+    sessionStorage.setItem(SESSION_TOKEN_KEY, token)
+    sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(user))
+    set({ user, token, isAuthenticated: true, isLoading: false })
+  },
 
-  clearAuth: () => set({ user: null, isAuthenticated: false, isLoading: false }),
+  clearAuth: () => {
+    sessionStorage.removeItem(SESSION_TOKEN_KEY)
+    sessionStorage.removeItem(SESSION_USER_KEY)
+    set({ user: null, token: null, isAuthenticated: false, isLoading: false })
+  },
 
   setLoading: (loading) => set({ isLoading: loading }),
 }))

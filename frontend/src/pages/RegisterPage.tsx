@@ -53,7 +53,7 @@ export default function RegisterPage() {
   const [inviteChecked, setInviteChecked] = useState(!inviteToken) // true when no invite or check done
   const [inviteEmail, setInviteEmail] = useState('')
 
-  const { setUser } = useAuthStore()
+  const { setAuth } = useAuthStore()
   const navigate = useNavigate()
 
   // Validate invite token on load if present in URL
@@ -104,7 +104,7 @@ export default function RegisterPage() {
         payload.invite_token = inviteToken
       }
       const { data } = await api.post('/auth/register', payload)
-      setUser(data)
+      setAuth(data.user, data.access_token)
       toast.success('Account created! Welcome aboard 🎉')
       navigate('/dashboard')
     } catch (err: any) {
