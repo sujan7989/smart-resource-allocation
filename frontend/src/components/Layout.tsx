@@ -32,7 +32,7 @@ const roleColors: Record<string, string> = {
 }
 
 export default function Layout() {
-  const { user, logout } = useAuthStore()
+  const { user, clearAuth } = useAuthStore()
   const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
@@ -52,8 +52,13 @@ export default function Layout() {
     return () => clearInterval(interval)
   }, [user])
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout')
+    } catch {
+      // ignore — cookie will expire naturally
+    }
+    clearAuth()
     navigate('/login')
   }
 

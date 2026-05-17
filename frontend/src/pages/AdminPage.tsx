@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore'
 import {
   Plus, X, Loader2, Shield, Users, UserCheck, Trash2,
   ToggleLeft, ToggleRight, CheckCircle, XCircle, Key, Edit2,
+  Link as LinkIcon, Copy, Mail,
 } from 'lucide-react'
 
 interface UserItem {
@@ -63,6 +64,12 @@ export default function AdminPage() {
   const [editRoleUser, setEditRoleUser] = useState<UserItem | null>(null)
   const [newRole, setNewRole] = useState('')
   const [savingRole, setSavingRole] = useState(false)
+
+  // Admin invite
+  const [showInvite, setShowInvite] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [generatingInvite, setGeneratingInvite] = useState(false)
+  const [inviteResult, setInviteResult] = useState<{ invite_url: string; invite_token: string } | null>(null)
 
   const fetchData = async () => {
     setLoading(true)
@@ -155,6 +162,28 @@ export default function AdminPage() {
     }
   }
 
+  const handleGenerateInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setGeneratingInvite(true)
+    try {
+      const { data } = await api.post('/users/invite-admin', {
+        invited_email: inviteEmail || null,
+      })
+      setInviteResult(data)
+      toast.success(inviteEmail ? 'Invite sent by email!' : 'Invite link generated!')
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || 'Failed to generate invite')
+    } finally {
+      setGeneratingInvite(false)
+    }
+  }
+
+  const copyInviteLink = () => {
+    if (!inviteResult) return
+    navigator.clipboard.writeText(inviteResult.invite_url)
+    toast.success('Invite link copied!')
+  }
+
   const handleApproveAssignment = async (assignmentId: string) => {
     try {
       await api.patch(`/assignments/${assignmentId}`, { status: 'accepted' })
@@ -215,8 +244,98 @@ export default function AdminPage() {
         ))}
       </motion.div>
 
-      {/* Pending assignments alert */}
-      {pendingAssignments.length > 0 && (
+      {/* Admin invite section */}
+      <motion.div variants={item} className="card border-purple-500/20">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <Shield size={18} className="text-purple-400" />
+            <h2 className="font-bold text-white">Transfer Admin Access</h2>
+          </div>
+          <motion.button
+            onClick={() => { setShowInvite(!showInvite); setInviteResult(null); setInviteEmail('') }}
+            whileTap={{ scale: 0.97 }}
+            className="text-xs text-purple-400 hover:text-purple-300 transition-colors"
+          >
+            {showInvite ? 'Close' : 'Generate Invite'}
+          </motion.button>
+        </div>
+        <p className="text-xs text-slate-500 mb-3">
+          Generate a one-time invite link to hand admin access to someone else.
+          The link expires in 48 hours and can only be used once.
+        </p>
+
+        <AnimatePresence>
+          {showInvite && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              {!inviteResult ? (
+                <form onSubmit={handleGenerateInvite} className="space-y-3 pt-2 border-t border-white/5">
+                  <div>
+                    <label className="input-label flex items-center gap-1">
+                      <Mail size={13} /> Invite email <span className="text-slate-600">(optional — locks invite to this address)</span>
+                    </label>
+                    <input
+                      type="email"
+                      className="input"
+                      placeholder="newadmin@ngo.org"
+                      value={inviteEmail}
+                      onChange={e => setInviteEmail(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="btn-primary text-sm py-2 flex items-center gap-2"
+                    disabled={generatingInvite}
+                  >
+                    {generatingInvite
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : <LinkIcon size={14} />
+                    }
+                    {inviteEmail ? 'Send Invite Email' : 'Generate Invite Link'}
+                  </button>
+                </form>
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="pt-2 border-t border-white/5 space-y-3"
+                >
+                  <p className="text-xs text-green-400 font-medium">
+                    ✓ Invite {inviteEmail ? `sent to ${inviteEmail}` : 'generated'} — valid for 48 hours
+                  </p>
+                  <div className="flex items-center gap-2 bg-slate-800/60 rounded-xl p-3 border border-white/5">
+                    <p className="text-xs text-slate-400 truncate flex-1 font-mono">
+                      {inviteResult.invite_url}
+                    </p>
+                    <motion.button
+                      onClick={copyInviteLink}
+                      whileTap={{ scale: 0.95 }}
+                      className="text-slate-400 hover:text-white transition-colors shrink-0"
+                      title="Copy link"
+                    >
+                      <Copy size={15} />
+                    </motion.button>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Share this link with the new admin. It can only be used once.
+                  </p>
+                  <button
+                    onClick={() => { setInviteResult(null); setInviteEmail('') }}
+                    className="text-xs text-slate-500 hover:text-white transition-colors"
+                  >
+                    Generate another
+                  </button>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+
+      {/* Pending assignments alert */}      {pendingAssignments.length > 0 && (
         <motion.div variants={item} className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
           <p className="text-amber-400 font-semibold text-sm mb-3">
             ⏳ {pendingAssignments.length} assignment{pendingAssignments.length > 1 ? 's' : ''} waiting for your approval

@@ -39,7 +39,7 @@ interface FieldReport {
 }
 
 export default function ProfilePage() {
-  const { user, setAuth, token } = useAuthStore()
+  const { user, setUser } = useAuthStore()
   const isVolunteer = user?.role === 'volunteer'
   const isFieldWorker = user?.role === 'field_worker'
 
@@ -120,8 +120,8 @@ export default function ProfilePage() {
     setSaving(true)
     try {
       const { data } = await api.patch('/users/me', accountForm)
-      // token is always present when authenticated — safe assertion
-      setAuth(data, token as string)
+      // Update in-memory auth state with the fresh user data from the server
+      setUser(data)
       toast.success('Profile updated!')
       setEditingAccount(false)
     } catch (err: any) {

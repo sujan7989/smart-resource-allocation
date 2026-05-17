@@ -104,6 +104,36 @@ migrations = [
         "sql": "ALTER TABLE field_reports ADD COLUMN updated_at TIMESTAMP DEFAULT NOW()",
         "description": "Add updated_at to field_reports"
     },
+    # ── New tables for password reset and admin invite ─────────────────────────
+    # These are created by SQLAlchemy's create_all on startup, but we add them
+    # here as a safety net for existing deployments that skip a full restart.
+    {
+        "table": "password_reset_tokens",
+        "column": "id",
+        "sql": """CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id VARCHAR PRIMARY KEY,
+            user_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            token VARCHAR UNIQUE NOT NULL,
+            is_used BOOLEAN NOT NULL DEFAULT FALSE,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+        "description": "Create password_reset_tokens table"
+    },
+    {
+        "table": "admin_invite_tokens",
+        "column": "id",
+        "sql": """CREATE TABLE IF NOT EXISTS admin_invite_tokens (
+            id VARCHAR PRIMARY KEY,
+            created_by_id VARCHAR NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            token VARCHAR UNIQUE NOT NULL,
+            invited_email VARCHAR,
+            is_used BOOLEAN NOT NULL DEFAULT FALSE,
+            expires_at TIMESTAMP NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )""",
+        "description": "Create admin_invite_tokens table"
+    },
 ]
 
 def run_migrations():

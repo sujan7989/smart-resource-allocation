@@ -5,19 +5,12 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api'
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 15000, // 15 second timeout — prevents infinite loading on hung requests
+  timeout: 15000,        // 15 second timeout — prevents infinite loading on hung requests
+  withCredentials: true, // send the httpOnly auth cookie on every cross-origin request
 })
 
-// Attach JWT token to every request
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-// Handle 401 globally — redirect to login, but avoid redirect loop if already there
+// Handle 401 globally — redirect to login, but avoid redirect loop if already there.
+// No localStorage to clear — the cookie is managed entirely by the browser/backend.
 api.interceptors.response.use(
   (res) => res,
   (error) => {
@@ -25,8 +18,8 @@ api.interceptors.response.use(
       error.response?.status === 401 &&
       !window.location.pathname.startsWith('/login')
     ) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      // Cookie is expired or invalid — send user to login.
+      // The backend's POST /api/auth/logout will clear the cookie on next explicit logout.
       window.location.href = '/login'
     }
     return Promise.reject(error)

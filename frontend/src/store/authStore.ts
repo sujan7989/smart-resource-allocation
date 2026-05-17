@@ -13,60 +13,29 @@ export interface User {
 
 interface AuthState {
   user: User | null
-  token: string | null
   isAuthenticated: boolean
-  setAuth: (user: User, token: string) => void
-  logout: () => void
+  isLoading: boolean          // true while /api/auth/me is in-flight on app load
+  setUser: (user: User) => void
+  clearAuth: () => void
+  setLoading: (loading: boolean) => void
 }
 
-/** Check if a JWT token is expired without verifying the signature. */
-function isTokenExpired(token: string): boolean {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    // exp is in seconds; Date.now() is in milliseconds
-    return payload.exp * 1000 < Date.now()
-  } catch {
-    return true // malformed token — treat as expired
-  }
-}
-
-function loadInitialAuth(): { user: User | null; token: string | null; isAuthenticated: boolean } {
-  try {
-    const token = localStorage.getItem('token')
-    const userStr = localStorage.getItem('user')
-
-    if (!token || !userStr) {
-      return { user: null, token: null, isAuthenticated: false }
-    }
-
-    // Clear expired tokens on app load — prevents stale auth state
-    if (isTokenExpired(token)) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      return { user: null, token: null, isAuthenticated: false }
-    }
-
-    const user: User = JSON.parse(userStr)
-    return { user, token, isAuthenticated: true }
-  } catch {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    return { user: null, token: null, isAuthenticated: false }
-  }
-}
-
+/**
+ * Auth state lives entirely in memory.
+ * The JWT is stored in a httpOnly cookie set by the backend — JavaScript
+ * cannot read or write it, which eliminates XSS token theft.
+ *
+ * On app load, App.tsx calls GET /api/auth/me to restore the session.
+ * On logout, POST /api/auth/logout tells the backend to clear the cookie.
+ */
 export const useAuthStore = create<AuthState>((set) => ({
-  ...loadInitialAuth(),
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,   // start as loading — App.tsx resolves this on mount
 
-  setAuth: (user, token) => {
-    localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(user))
-    set({ user, token, isAuthenticated: true })
-  },
+  setUser: (user) => set({ user, isAuthenticated: true, isLoading: false }),
 
-  logout: () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    set({ user: null, token: null, isAuthenticated: false })
-  },
+  clearAuth: () => set({ user: null, isAuthenticated: false, isLoading: false }),
+
+  setLoading: (loading) => set({ isLoading: loading }),
 }))

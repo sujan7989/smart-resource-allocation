@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator, model_validator
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 from datetime import datetime
 from src.models.user import UserRole
@@ -8,18 +8,11 @@ class UserCreate(BaseModel):
     email: EmailStr
     full_name: str
     password: str
-    # Public registration is restricted to non-admin roles only.
-    # Admins are created by existing admins via /api/users/ (AdminCreateUser).
     role: UserRole = UserRole.VOLUNTEER
     phone: Optional[str] = None
     location: Optional[str] = None
-
-    @field_validator("role")
-    @classmethod
-    def block_admin_self_registration(cls, v: UserRole) -> UserRole:
-        if v == UserRole.ADMIN:
-            raise ValueError("Admin accounts cannot be self-registered. Contact your administrator.")
-        return v
+    # Required when role == admin — must be a valid AdminInviteToken
+    invite_token: Optional[str] = None
 
     @field_validator("password")
     @classmethod
@@ -109,6 +102,38 @@ class PasswordChange(BaseModel):
         return v
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit")
+        return v
+
+
+class AdminInviteRequest(BaseModel):
+    """Admin sends this to generate an invite token for a new admin."""
+    invited_email: Optional[EmailStr] = None  # optional: lock invite to a specific email
+
+
+class AdminInviteResponse(BaseModel):
+    invite_token: str
+    invite_url: str
+    expires_at: datetime
+    invited_email: Optional[str] = None
+
+
 class AdminCreateUser(BaseModel):
     email: EmailStr
     full_name: str
@@ -158,9 +183,3 @@ class AdminResetPassword(BaseModel):
         if not any(c.isdigit() for c in v):
             raise ValueError("Password must contain at least one digit")
         return v
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    user: UserResponse

@@ -1,10 +1,19 @@
+import secrets
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from src.database import get_db
 from src.models.user import User, UserRole
-from src.schemas.user import UserResponse, UserUpdate, PasswordChange, AdminCreateUser, AdminUpdateUser, AdminResetPassword
+from src.models.token import AdminInviteToken
+from src.schemas.user import (
+    UserResponse, UserUpdate, PasswordChange,
+    AdminCreateUser, AdminUpdateUser, AdminResetPassword,
+    AdminInviteRequest, AdminInviteResponse,
+)
 from src.auth import get_current_user, get_password_hash, verify_password, require_admin
+from src.config import settings
+from src import email_service
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
@@ -166,3 +175,49 @@ def admin_delete_user(
     db.query(VolunteerProfile).filter(VolunteerProfile.user_id == user_id).delete()
     db.delete(user)
     db.commit()
+
+
+# ── Admin invite ───────────────────────────────────────────────────────────────
+
+@router.post("/invite-admin", response_model=AdminInviteResponse, status_code=201)
+def generate_admin_invite(
+    data: AdminInviteRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """
+    Generate a single-use admin invite token (valid for 48 hours).
+
+    The current admin uses this to hand off admin access to someone else.
+    Optionally lock the invite to a specific email address.
+    The invite link is emailed if an address is provided and SMTP is configured,
+    otherwise the token is returned in the response for manual sharing.
+    """
+    raw_token = secrets.token_urlsafe(48)
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.ADMIN_INVITE_EXPIRE_HOURS)
+
+    invite = AdminInviteToken(
+        created_by_id=current_user.id,
+        token=raw_token,
+        invited_email=data.invited_email,
+        expires_at=expires_at,
+    )
+    db.add(invite)
+    db.commit()
+
+    invite_url = f"{settings.FRONTEND_URL}/register?invite={raw_token}&role=admin"
+
+    # Send invite email if an address was provided
+    if data.invited_email:
+        email_service.send_admin_invite_email(
+            to_email=data.invited_email,
+            invited_by_name=current_user.full_name,
+            invite_token=raw_token,
+        )
+
+    return AdminInviteResponse(
+        invite_token=raw_token,
+        invite_url=invite_url,
+        expires_at=expires_at,
+        invited_email=data.invited_email,
+    )

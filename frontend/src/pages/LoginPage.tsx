@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [liveStats, setLiveStats] = useState<{
     people: number; needs: number; volunteers: number
   } | null>(null)
-  const { setAuth } = useAuthStore()
+  const { setUser } = useAuthStore()
   const navigate = useNavigate()
 
   // Fetch real live stats for the login page (public endpoint)
@@ -37,8 +37,8 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const { data } = await api.post('/auth/login', { email, password })
-      setAuth(data.user, data.access_token)
-      toast.success(`Welcome back, ${data.user.full_name}!`)
+      setUser(data)
+      toast.success(`Welcome back, ${data.full_name}!`)
       navigate('/dashboard')
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Invalid credentials')
@@ -185,6 +185,14 @@ export default function LoginPage() {
                     aria-label="Password"
                     autoComplete="current-password"
                   />
+                </div>
+                <div className="flex justify-end mt-2">
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium"
+                  >
+                    Forgot password?
+                  </Link>
                 </div>
               </div>
 
