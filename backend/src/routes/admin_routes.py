@@ -11,11 +11,25 @@ from src.models.assignment import Assignment
 from src.models.field_report import FieldReport
 from src.models.volunteer import VolunteerProfile
 from src.auth import require_admin
+from src import email_service
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
-# Confirmation token required to prevent accidental data wipe
 _CONFIRM_TOKEN = "CONFIRM_DELETE_ALL"
+
+
+@router.get("/test-email")
+def test_email(
+    to: str = Query(..., description="Email address to send test to"),
+    current_user: User = Depends(require_admin),
+):
+    """
+    Admin: test email configuration and send a test email.
+    Returns detailed diagnostics so you can see exactly what's failing.
+    GET /api/admin/test-email?to=you@gmail.com
+    """
+    result = email_service.test_email_config(to)
+    return result
 
 
 @router.delete("/clear-sample-data", status_code=200)
@@ -24,17 +38,12 @@ def clear_sample_data(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """
-    Removes all non-admin users and all data.
-    Requires ?confirm=CONFIRM_DELETE_ALL query parameter to prevent accidents.
-    """
     if confirm != _CONFIRM_TOKEN:
         raise HTTPException(
             status_code=400,
             detail=f"Confirmation token required. Pass ?confirm={_CONFIRM_TOKEN} to proceed.",
         )
 
-    # Delete in FK-safe order
     db.query(Assignment).delete()
     db.query(FieldReport).delete()
     db.query(Task).delete()
