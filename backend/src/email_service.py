@@ -15,27 +15,24 @@ logger = logging.getLogger(__name__)
 
 
 def is_email_configured() -> bool:
-    return bool(settings.SMTP_HOST or settings.RESEND_API_KEY)
+    return bool(settings.BREVO_API_KEY or settings.RESEND_API_KEY or settings.SMTP_HOST)
 
 
 def _send(to_email: str, subject: str, html_body: str, text_body: str) -> bool:
     """
-    Try Brevo API first (works on Render free tier), then Resend, then SMTP.
+    Try Brevo first (works on Render free tier), then Resend, then SMTP.
     Returns True on success, False on failure.
     """
-    # 1. Brevo (formerly Sendinblue) — HTTP API, works on Render free tier
     if settings.BREVO_API_KEY:
         ok = _send_via_brevo(to_email, subject, html_body, text_body)
         if ok:
             return True
 
-    # 2. Resend API
     if settings.RESEND_API_KEY:
         ok = _send_via_resend(to_email, subject, html_body, text_body)
         if ok:
             return True
 
-    # 3. SMTP (blocked on Render free tier but works on paid/other hosts)
     if settings.SMTP_HOST:
         ok = _send_via_smtp(to_email, subject, html_body, text_body)
         if ok:
@@ -141,55 +138,58 @@ def _send_via_resend(to_email: str, subject: str, html_body: str, text_body: str
 # ── Diagnostic ─────────────────────────────────────────────────────────────────
 
 def test_email_config(to_email: str) -> dict:
-    """
-    Test email configuration and return detailed status.
-    Called by GET /api/admin/test-email endpoint.
-    """
+    """Test all configured email providers and return detailed diagnostics."""
     result = {
+        "brevo_configured": bool(settings.BREVO_API_KEY),
+        "resend_configured": bool(settings.RESEND_API_KEY),
         "smtp_configured": bool(settings.SMTP_HOST),
         "smtp_host": settings.SMTP_HOST or None,
         "smtp_user": settings.SMTP_USER or None,
-        "resend_configured": bool(settings.RESEND_API_KEY),
         "from_address": settings.EMAIL_FROM_ADDRESS,
-        "smtp_result": None,
+        "brevo_result": None,
         "resend_result": None,
+        "smtp_result": None,
         "overall": False,
         "error": None,
     }
 
-    if settings.SMTP_HOST:
-        try:
-            msg = MIMEMultipart("alternative")
-            msg["Subject"] = "Test Email — Smart Resource Allocation"
-            msg["From"]    = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM_ADDRESS}>"
-            msg["To"]      = to_email
-            msg.attach(MIMEText("This is a test email. Email is working correctly!", "plain"))
+    test_subject = "Test Email — Smart Resource Allocation"
+    test_text    = "This is a test email. Email is working correctly!"
 
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                server.sendmail(settings.EMAIL_FROM_ADDRESS, to_email, msg.as_string())
-            result["smtp_result"] = "success"
-            result["overall"] = True
-        except smtplib.SMTPAuthenticationError as e:
-            result["smtp_result"] = f"auth_failed: {str(e)}"
-            result["error"] = "SMTP authentication failed. Check SMTP_USER and SMTP_PASSWORD."
+    # 1. Test Brevo
+    if settings.BREVO_API_KEY:
+        payload = json.dumps({
+            "sender": {"name": settings.EMAIL_FROM_NAME, "email": settings.EMAIL_FROM_ADDRESS},
+            "to": [{"email": to_email}],
+            "subject": test_subject,
+            "textContent": test_text,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.brevo.com/v3/smtp/email",
+            data=payload,
+            headers={"api-key": settings.BREVO_API_KEY, "Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                result["brevo_result"] = f"success (status {resp.status})"
+                result["overall"] = True
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", errors="replace")
+            result["brevo_result"] = f"HTTP {e.code}: {body}"
+            result["error"] = body
         except Exception as e:
-            result["smtp_result"] = f"error: {str(e)}"
+            result["brevo_result"] = f"error: {str(e)}"
             result["error"] = str(e)
 
+    # 2. Test Resend (only if Brevo failed)
     if settings.RESEND_API_KEY and not result["overall"]:
         payload = json.dumps({
             "from": f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM_ADDRESS}>",
-            "to": [to_email],
-            "subject": "Test Email — Smart Resource Allocation",
-            "text": "This is a test email. Email is working correctly!",
+            "to": [to_email], "subject": test_subject, "text": test_text,
         }).encode("utf-8")
         req = urllib.request.Request(
-            "https://api.resend.com/emails",
-            data=payload,
+            "https://api.resend.com/emails", data=payload,
             headers={"Authorization": f"Bearer {settings.RESEND_API_KEY}", "Content-Type": "application/json"},
             method="POST",
         )
@@ -200,9 +200,29 @@ def test_email_config(to_email: str) -> dict:
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", errors="replace")
             result["resend_result"] = f"HTTP {e.code}: {body}"
-            result["error"] = body
         except Exception as e:
             result["resend_result"] = f"error: {str(e)}"
+
+    # 3. Test SMTP (only if others failed)
+    if settings.SMTP_HOST and not result["overall"]:
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = test_subject
+            msg["From"] = f"{settings.EMAIL_FROM_NAME} <{settings.EMAIL_FROM_ADDRESS}>"
+            msg["To"] = to_email
+            msg.attach(MIMEText(test_text, "plain"))
+            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=15) as server:
+                server.ehlo(); server.starttls(); server.ehlo()
+                server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+                server.sendmail(settings.EMAIL_FROM_ADDRESS, to_email, msg.as_string())
+            result["smtp_result"] = "success"
+            result["overall"] = True
+        except smtplib.SMTPAuthenticationError as e:
+            result["smtp_result"] = f"auth_failed: {str(e)}"
+            result["error"] = "SMTP auth failed. Check SMTP_USER and SMTP_PASSWORD."
+        except Exception as e:
+            result["smtp_result"] = f"error: {str(e)}"
+            result["error"] = str(e)
 
     return result
 
