@@ -44,6 +44,8 @@ def _send(to_email: str, subject: str, html_body: str, text_body: str) -> bool:
 
 def _send_via_brevo(to_email: str, subject: str, html_body: str, text_body: str) -> bool:
     """Send via Brevo (Sendinblue) HTTP API — works on Render free tier."""
+    # Strip any accidental whitespace/newlines from the key (Render UI can add them)
+    api_key = settings.BREVO_API_KEY.strip()
     payload = json.dumps({
         "sender": {"name": settings.EMAIL_FROM_NAME, "email": settings.EMAIL_FROM_ADDRESS},
         "to": [{"email": to_email}],
@@ -56,7 +58,7 @@ def _send_via_brevo(to_email: str, subject: str, html_body: str, text_body: str)
         "https://api.brevo.com/v3/smtp/email",
         data=payload,
         headers={
-            "api-key": settings.BREVO_API_KEY,
+            "api-key": api_key,
             "Content-Type": "application/json",
             "Accept": "application/json",
         },

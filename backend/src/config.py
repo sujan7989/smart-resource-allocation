@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     EMAIL_FROM_ADDRESS: str = "noreply@smartalloc.org"
     EMAIL_FROM_NAME: str = "Smart Resource Allocation"
 
+    @field_validator("BREVO_API_KEY", "RESEND_API_KEY", "SMTP_PASSWORD", "SMTP_USER", "SMTP_HOST", "EMAIL_FROM_ADDRESS", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: str) -> str:
+        """Strip accidental whitespace/newlines that Render's UI can introduce."""
+        if isinstance(v, str):
+            return v.strip()
+        return v
+
     # ── Token expiry ──────────────────────────────────────────────────────────
     PASSWORD_RESET_EXPIRE_MINUTES: int = 60       # 1 hour
     ADMIN_INVITE_EXPIRE_HOURS: int = 48           # 2 days
