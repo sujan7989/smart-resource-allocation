@@ -275,7 +275,7 @@ export default function AdminPage() {
                 <form onSubmit={handleGenerateInvite} className="space-y-3 pt-2 border-t border-white/5">
                   <div>
                     <label className="input-label flex items-center gap-1">
-                      <Mail size={13} /> Invite email <span className="text-slate-600">(optional — locks invite to this address)</span>
+                      <Mail size={13} /> Invite email <span className="text-slate-600">(optional)</span>
                     </label>
                     <input
                       type="email"
@@ -284,17 +284,18 @@ export default function AdminPage() {
                       value={inviteEmail}
                       onChange={e => setInviteEmail(e.target.value)}
                     />
+                    <p className="text-xs text-slate-600 mt-1">
+                      The invite link is always shown below so you can copy &amp; share it manually (e.g. WhatsApp).
+                      Email delivery requires SMTP to be configured on the server.
+                    </p>
                   </div>
                   <button
                     type="submit"
                     className="btn-primary text-sm py-2 flex items-center gap-2"
                     disabled={generatingInvite}
                   >
-                    {generatingInvite
-                      ? <Loader2 size={14} className="animate-spin" />
-                      : <LinkIcon size={14} />
-                    }
-                    {inviteEmail ? 'Send Invite Email' : 'Generate Invite Link'}
+                    {generatingInvite ? <Loader2 size={14} className="animate-spin" /> : <LinkIcon size={14} />}
+                    Generate Invite Link
                   </button>
                 </form>
               ) : (
@@ -303,25 +304,36 @@ export default function AdminPage() {
                   animate={{ opacity: 1 }}
                   className="pt-2 border-t border-white/5 space-y-3"
                 >
-                  <p className="text-xs text-green-400 font-medium">
-                    ✓ Invite {inviteEmail ? `sent to ${inviteEmail}` : 'generated'} — valid for 48 hours
+                  <p className="text-xs text-green-400 font-medium flex items-center gap-1">
+                    ✓ Invite link ready — valid for 48 hours, single use
                   </p>
-                  <div className="flex items-center gap-2 bg-slate-800/60 rounded-xl p-3 border border-white/5">
-                    <p className="text-xs text-slate-400 truncate flex-1 font-mono">
-                      {inviteResult.invite_url}
-                    </p>
-                    <motion.button
-                      onClick={copyInviteLink}
-                      whileTap={{ scale: 0.95 }}
-                      className="text-slate-400 hover:text-white transition-colors shrink-0"
-                      title="Copy link"
-                    >
-                      <Copy size={15} />
-                    </motion.button>
+
+                  {/* Always show the link — copy it and share via WhatsApp/email/etc */}
+                  <div className="space-y-1">
+                    <p className="text-xs text-slate-500">Copy this link and send it to the new admin:</p>
+                    <div className="flex items-center gap-2 bg-slate-800/60 rounded-xl p-3 border border-purple-500/20">
+                      <p className="text-xs text-slate-300 truncate flex-1 font-mono select-all">
+                        {inviteResult.invite_url}
+                      </p>
+                      <motion.button
+                        onClick={copyInviteLink}
+                        whileTap={{ scale: 0.95 }}
+                        className="text-purple-400 hover:text-white transition-colors shrink-0 flex items-center gap-1 text-xs font-medium"
+                        title="Copy link"
+                      >
+                        <Copy size={14} /> Copy
+                      </motion.button>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-500">
-                    Share this link with the new admin. It can only be used once.
-                  </p>
+
+                  {inviteEmail && (
+                    <p className="text-xs text-amber-400/80 flex items-start gap-1">
+                      <Mail size={12} className="mt-0.5 shrink-0" />
+                      An email was attempted to {inviteEmail}. If it didn't arrive,
+                      copy the link above and share it directly.
+                    </p>
+                  )}
+
                   <button
                     onClick={() => { setInviteResult(null); setInviteEmail('') }}
                     className="text-xs text-slate-500 hover:text-white transition-colors"
@@ -335,7 +347,8 @@ export default function AdminPage() {
         </AnimatePresence>
       </motion.div>
 
-      {/* Pending assignments alert */}      {pendingAssignments.length > 0 && (
+      {/* Pending assignments alert */}
+      {pendingAssignments.length > 0 && (
         <motion.div variants={item} className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
           <p className="text-amber-400 font-semibold text-sm mb-3">
             ⏳ {pendingAssignments.length} assignment{pendingAssignments.length > 1 ? 's' : ''} waiting for your approval

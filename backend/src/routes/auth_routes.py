@@ -153,6 +153,8 @@ def forgot_password(
     """
     Request a password reset email.
     Always returns 200 — prevents email enumeration attacks.
+    When SMTP is not configured, returns the reset URL directly in the response
+    so it can still be used (useful when email delivery is not set up yet).
     """
     user = db.query(User).filter(User.email == data.email).first()
 
@@ -174,10 +176,22 @@ def forgot_password(
         db.add(reset_token)
         db.commit()
 
+        email_sent = bool(settings.SMTP_HOST)
         email_service.send_password_reset_email(user.email, user.full_name, raw_token)
 
+        # When SMTP is not configured, return the reset URL directly
+        # so the user can still reset their password without email
+        if not email_sent:
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
+            return {
+                "message": "Email delivery is not configured. Use the link below to reset your password.",
+                "reset_url": reset_url,
+                "email_configured": False,
+            }
+
     return {
-        "message": "If that email is registered, a password reset link has been sent."
+        "message": "If that email is registered, a password reset link has been sent.",
+        "email_configured": bool(settings.SMTP_HOST),
     }
 
 
