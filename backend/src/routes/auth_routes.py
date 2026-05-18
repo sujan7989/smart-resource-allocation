@@ -170,7 +170,8 @@ def forgot_password(
         db.commit()
 
         email_sent = email_service.is_email_configured()
-        email_service.send_password_reset_email(user.email, user.full_name, raw_token)
+        if email_sent:
+            email_service.send_password_reset_email(user.email, user.full_name, raw_token)
 
         # When no email provider is configured, return the reset URL directly
         if not email_sent:

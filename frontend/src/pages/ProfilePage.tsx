@@ -120,7 +120,7 @@ export default function ProfilePage() {
     setSaving(true)
     try {
       const { data } = await api.patch('/users/me', accountForm)
-      setAuth(data, token as string)
+      setAuth(data, token ?? '')
       toast.success('Profile updated!')
       setEditingAccount(false)
     } catch (err: any) {

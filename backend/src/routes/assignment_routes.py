@@ -159,15 +159,16 @@ def update_assignment(
             # Accumulate volunteer hours
             if updates.hours_spent is not None and updates.hours_spent > 0:
                 profile.total_hours_contributed = (profile.total_hours_contributed or 0) + updates.hours_spent
-            # Update volunteer rating if a rating was provided
+            # Update volunteer rating if a rating was provided (running average, 1 decimal)
             if updates.rating is not None:
                 old_count = profile.total_tasks_completed - 1
                 if old_count > 0:
                     profile.rating = round(
-                        (profile.rating * old_count + updates.rating) / profile.total_tasks_completed
+                        (profile.rating * old_count + updates.rating) / profile.total_tasks_completed,
+                        1
                     )
                 else:
-                    profile.rating = updates.rating
+                    profile.rating = float(updates.rating)
         if task:
             task.status = TaskStatus.COMPLETED
 

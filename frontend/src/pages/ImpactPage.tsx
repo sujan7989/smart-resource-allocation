@@ -70,7 +70,7 @@ export default function ImpactPage() {
   useEffect(() => {
     Promise.all([
       api.get('/dashboard/impact'),
-      api.get('/volunteers/', { params: { available_only: false } }),
+      api.get('/volunteers/'),   // fetch all volunteers — no filter param needed
       api.get('/dashboard/needs-by-category'),
     ])
       .then(([impactRes, volRes, catRes]) => {

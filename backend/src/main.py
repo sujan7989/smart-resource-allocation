@@ -28,7 +28,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 app = FastAPI(
     title="Smart Resource Allocation API",
     description="Data-Driven Volunteer Coordination for Social Impact",
-    version="2.0.4",
+    version="2.0.5",
     docs_url="/docs",
     redoc_url="/redoc",
 )

@@ -146,15 +146,17 @@ export default function FieldReportsPage() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Ground-level observations from field workers</p>
         </div>
-        <motion.button
-          onClick={() => setShowForm(true)}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus size={16} /> Submit Report
-        </motion.button>
-      </motion.div>
+        {/* Only field workers and admins can submit reports */}
+        {(user?.role === 'field_worker' || user?.role === 'admin') && (
+          <motion.button
+            onClick={() => setShowForm(true)}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus size={16} /> Submit Report
+          </motion.button>
+        )}      </motion.div>
 
       {/* Submit report form */}
       <AnimatePresence>
