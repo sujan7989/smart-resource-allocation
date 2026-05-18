@@ -20,24 +20,62 @@ def is_email_configured() -> bool:
 
 def _send(to_email: str, subject: str, html_body: str, text_body: str) -> bool:
     """
-    Try SMTP first (Gmail), then Resend as fallback.
+    Try Brevo API first (works on Render free tier), then Resend, then SMTP.
     Returns True on success, False on failure.
-    Never raises — email failure must never crash a user request.
     """
-    # 1. Gmail SMTP — try first (works for any recipient, no domain needed)
+    # 1. Brevo (formerly Sendinblue) — HTTP API, works on Render free tier
+    if settings.BREVO_API_KEY:
+        ok = _send_via_brevo(to_email, subject, html_body, text_body)
+        if ok:
+            return True
+
+    # 2. Resend API
+    if settings.RESEND_API_KEY:
+        ok = _send_via_resend(to_email, subject, html_body, text_body)
+        if ok:
+            return True
+
+    # 3. SMTP (blocked on Render free tier but works on paid/other hosts)
     if settings.SMTP_HOST:
         ok = _send_via_smtp(to_email, subject, html_body, text_body)
         if ok:
             return True
-        logger.warning("[Email] SMTP failed, trying Resend...")
 
-    # 2. Resend API — fallback
-    if settings.RESEND_API_KEY:
-        return _send_via_resend(to_email, subject, html_body, text_body)
-
-    # 3. Nothing configured
-    logger.warning(f"[Email] No provider configured. To: {to_email} | Subject: {subject}")
+    logger.warning(f"[Email] All providers failed or none configured. To: {to_email}")
     return False
+
+
+def _send_via_brevo(to_email: str, subject: str, html_body: str, text_body: str) -> bool:
+    """Send via Brevo (Sendinblue) HTTP API — works on Render free tier."""
+    payload = json.dumps({
+        "sender": {"name": settings.EMAIL_FROM_NAME, "email": settings.EMAIL_FROM_ADDRESS},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": html_body,
+        "textContent": text_body,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=payload,
+        headers={
+            "api-key": settings.BREVO_API_KEY,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            logger.info(f"[Brevo] ✓ Sent to {to_email} (status {resp.status})")
+            return True
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")
+        logger.error(f"[Brevo] HTTP {e.code} sending to {to_email}: {body}")
+        return False
+    except Exception as e:
+        logger.error(f"[Brevo] Error sending to {to_email}: {e}")
+        return False
 
 
 def _send_via_smtp(to_email: str, subject: str, html_body: str, text_body: str) -> bool:

@@ -32,21 +32,20 @@ class Settings(BaseSettings):
     DB_MAX_OVERFLOW: int = 10
 
     # ── Email ─────────────────────────────────────────────────────────────────
-    # Option 1 — Resend (RECOMMENDED, free, 2-minute setup, no credit card):
-    #   Sign up at https://resend.com → API Keys → Create Key
-    #   Set RESEND_API_KEY on Render. That's it — works for all users.
+    # RECOMMENDED: Brevo (free 300/day, works on Render free tier, any recipient)
+    #   Sign up: https://app.brevo.com → API Keys → Generate a new API key
+    BREVO_API_KEY: str = ""
+
+    # Resend (free 3000/month, needs verified domain for all recipients)
     RESEND_API_KEY: str = ""
 
-    # Option 2 — Gmail SMTP (or any SMTP provider):
-    #   SMTP_HOST=smtp.gmail.com, SMTP_PORT=587
-    #   SMTP_USER=you@gmail.com, SMTP_PASSWORD=16-char-app-password
+    # SMTP — blocked on Render free tier, use only on paid hosting
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
 
-    # Sender identity (shown in the From field of all emails)
-    EMAIL_FROM_ADDRESS: str = "onboarding@resend.dev"   # Resend's free sandbox address
+    EMAIL_FROM_ADDRESS: str = "noreply@smartalloc.org"
     EMAIL_FROM_NAME: str = "Smart Resource Allocation"
 
     # ── Token expiry ──────────────────────────────────────────────────────────
