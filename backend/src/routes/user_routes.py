@@ -68,20 +68,7 @@ def admin_create_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """
-    Admin: create any user (admin, volunteer, field_worker).
-    Only one admin account is allowed at a time.
-    To add a second admin, the existing admin must first demote themselves or delete the current admin.
-    """
-    # Enforce single-admin rule
-    if data.role == UserRole.ADMIN:
-        existing_admin_count = db.query(User).filter(User.role == UserRole.ADMIN).count()
-        if existing_admin_count >= 1:
-            raise HTTPException(
-                status_code=400,
-                detail="Only one admin account is allowed. Demote or delete the current admin first.",
-            )
-
+    """Admin: create any user (admin, volunteer, field_worker)."""
     existing = db.query(User).filter(User.email == data.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -116,18 +103,9 @@ def admin_update_user(
     if user.id == current_user.id and updates.is_active is False:
         raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
 
-    # Prevent admin from demoting themselves (would leave zero admins)
+    # Prevent admin from changing their own role
     if user.id == current_user.id and updates.role is not None and updates.role != UserRole.ADMIN:
         raise HTTPException(status_code=400, detail="Cannot change your own role. Ask another admin.")
-
-    # Enforce single-admin rule when promoting someone to admin
-    if updates.role == UserRole.ADMIN and user.role != UserRole.ADMIN:
-        existing_admin_count = db.query(User).filter(User.role == UserRole.ADMIN).count()
-        if existing_admin_count >= 1:
-            raise HTTPException(
-                status_code=400,
-                detail="Only one admin account is allowed. Demote the current admin first.",
-            )
 
     for field, value in updates.model_dump(exclude_unset=True).items():
         setattr(user, field, value)
@@ -187,11 +165,8 @@ def generate_admin_invite(
 ):
     """
     Generate a single-use admin invite token (valid for 48 hours).
-
-    The current admin uses this to hand off admin access to someone else.
+    Any existing admin can invite new admins — multiple admins are allowed.
     Optionally lock the invite to a specific email address.
-    The invite link is emailed if an address is provided and SMTP is configured,
-    otherwise the token is returned in the response for manual sharing.
     """
     raw_token = secrets.token_urlsafe(48)
     expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.ADMIN_INVITE_EXPIRE_HOURS)

@@ -61,14 +61,7 @@ def register(
                 detail="This invite token was issued for a different email address.",
             )
 
-        existing_admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
-        if existing_admin:
-            raise HTTPException(
-                status_code=400,
-                detail="An admin account already exists. "
-                       "The current admin must transfer or delete their account first.",
-            )
-
+        # Mark invite as used — token is single-use
         invite.is_used = True
 
     existing = db.query(User).filter(User.email == user_data.email).first()

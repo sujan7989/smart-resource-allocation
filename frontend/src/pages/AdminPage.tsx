@@ -249,7 +249,7 @@ export default function AdminPage() {
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <Shield size={18} className="text-purple-400" />
-            <h2 className="font-bold text-white">Transfer Admin Access</h2>
+            <h2 className="font-bold text-white">Invite New Admin</h2>
           </div>
           <motion.button
             onClick={() => { setShowInvite(!showInvite); setInviteResult(null); setInviteEmail('') }}
@@ -260,8 +260,8 @@ export default function AdminPage() {
           </motion.button>
         </div>
         <p className="text-xs text-slate-500 mb-3">
-          Generate a one-time invite link to hand admin access to someone else.
-          The link expires in 48 hours and can only be used once.
+          Generate a one-time invite link to add a new admin.
+          Multiple admins are allowed. The link expires in 48 hours and can only be used once.
         </p>
 
         <AnimatePresence>
