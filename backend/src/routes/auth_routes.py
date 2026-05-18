@@ -176,11 +176,10 @@ def forgot_password(
         db.add(reset_token)
         db.commit()
 
-        email_sent = bool(settings.SMTP_HOST)
+        email_sent = email_service.is_email_configured()
         email_service.send_password_reset_email(user.email, user.full_name, raw_token)
 
-        # When SMTP is not configured, return the reset URL directly
-        # so the user can still reset their password without email
+        # When no email provider is configured, return the reset URL directly
         if not email_sent:
             reset_url = f"{settings.FRONTEND_URL}/reset-password?token={raw_token}"
             return {
@@ -191,9 +190,8 @@ def forgot_password(
 
     return {
         "message": "If that email is registered, a password reset link has been sent.",
-        "email_configured": bool(settings.SMTP_HOST),
+        "email_configured": email_service.is_email_configured(),
     }
-
 
 # ── Reset password ─────────────────────────────────────────────────────────────
 

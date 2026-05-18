@@ -24,18 +24,19 @@ services:
         sync: false
       - key: ADMIN_FULL_NAME
         value: Platform Admin
-      # ── Email / SMTP (optional but recommended) ──────────────────────────
-      # Leave SMTP_HOST empty to disable email (reset links print to Render logs instead)
-      - key: SMTP_HOST
+      # ── Email (set ONE of these — server sends to all users automatically) ──
+      # Option 1: Resend (recommended, free at resend.com)
+      - key: RESEND_API_KEY
         sync: false
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
+      # Option 2: Gmail SMTP
+      # - key: SMTP_HOST
+      #   value: smtp.gmail.com
+      # - key: SMTP_USER
+      #   sync: false
+      # - key: SMTP_PASSWORD
+      #   sync: false
       - key: EMAIL_FROM_ADDRESS
-        value: noreply@smartalloc.org
+        value: onboarding@resend.dev
       - key: EMAIL_FROM_NAME
         value: Smart Resource Allocation
       - key: PYTHON_VERSION

@@ -31,25 +31,22 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 5
     DB_MAX_OVERFLOW: int = 10
 
-    # ── Email / SMTP ──────────────────────────────────────────────────────────
-    # Leave SMTP_HOST empty to disable email sending (dev mode — links printed to console).
-    #
-    # Gmail example:
-    #   SMTP_HOST=smtp.gmail.com
-    #   SMTP_PORT=587
-    #   SMTP_USER=you@gmail.com
-    #   SMTP_PASSWORD=<16-char App Password from Google Account → Security → App Passwords>
-    #
-    # SendGrid example:
-    #   SMTP_HOST=smtp.sendgrid.net
-    #   SMTP_PORT=587
-    #   SMTP_USER=apikey
-    #   SMTP_PASSWORD=<your SendGrid API key>
+    # ── Email ─────────────────────────────────────────────────────────────────
+    # Option 1 — Resend (RECOMMENDED, free, 2-minute setup, no credit card):
+    #   Sign up at https://resend.com → API Keys → Create Key
+    #   Set RESEND_API_KEY on Render. That's it — works for all users.
+    RESEND_API_KEY: str = ""
+
+    # Option 2 — Gmail SMTP (or any SMTP provider):
+    #   SMTP_HOST=smtp.gmail.com, SMTP_PORT=587
+    #   SMTP_USER=you@gmail.com, SMTP_PASSWORD=16-char-app-password
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    EMAIL_FROM_ADDRESS: str = "noreply@smartalloc.org"
+
+    # Sender identity (shown in the From field of all emails)
+    EMAIL_FROM_ADDRESS: str = "onboarding@resend.dev"   # Resend's free sandbox address
     EMAIL_FROM_NAME: str = "Smart Resource Allocation"
 
     # ── Token expiry ──────────────────────────────────────────────────────────
